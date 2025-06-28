@@ -1,0 +1,6 @@
+{
+  "aliases": {
+    "components": "~/common/components",
+    "lib": "~/lib"
+  }
+}
