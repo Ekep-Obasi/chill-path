@@ -154,16 +154,6 @@
                 debug: (msg) => { console.log(new Date().toISOString(), msg) }
             }).addTo(map);
 
-            // Print all polygons that will be rendered before shadows load
-            shadeMap.on('tileloaded', () => {
-                if (typeof shadeMap.getShadeMask === 'function') {
-                    const polygons = shadeMap.getShadeMask();
-                    polygons.forEach((poly, idx) => {
-                        console.log(`Polygon #${idx + 1} coordinates:`, poly);
-                    });
-                }
-            });
-
             shadeMap.on('tileloaded', (loadedTiles, totalTiles) => {
                 loaderEl.innerText = `Loading: ${(loadedTiles / totalTiles * 100).toFixed(0)}%`;
             });

@@ -83,7 +83,7 @@
 			});
 		};
 		/* Mapbox setup */
-		mapboxgl.accessToken = 'pk.eyJ1IjoiYXpyYWZhbG1hcyIsImEiOiJjbWNnaXhkNjMwbGNqMmpwdGlndXZ2ZnVtIn0.mTHFqXv1Ao_h2QptWhtmlg';
+		mapboxgl.accessToken = 'pk.eyJ1IjoidHBwaW90cm93c2tpIiwiYSI6ImNsNGVpdzMxYzAzenUzb28zYXZ4MXdlc2EifQ.M4IHx7SY0Wv5Zt6xzvKeBQ';
 		const map = new mapboxgl.Map({
 			container: 'mapid',
 			style: 'mapbox://styles/mapbox/streets-v11',
@@ -99,7 +99,7 @@
 		let shadeMap;
 		map.on('load', () => {
 			shadeMap = new ShadeMap({
-				apiKey: "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjFzYWtpYi51ZGRpbkBnbWFpbC5jb20iLCJjcmVhdGVkIjoxNzUxMTI5NjcyMTQ2LCJpYXQiOjE3NTExMjk2NzJ9.kE8qlYMd5W_J_p6rRgiwrcAHr9oHbN_ICx4nRzHyOFI",
+				apiKey: "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6InRwcGlvdHJvd3NraUBzaGFkZW1hcC5hcHAiLCJjcmVhdGVkIjoxNjYyNDkzMDY2Nzk0LCJpYXQiOjE2NjI0OTMwNjZ9.ovCrLTYsdKFTF6TW3DuODxCaAtGQ3qhcmqj3DWcol5g",
 				date: now,
 				color: '#01112f',
 				opacity: 0.7,
@@ -115,67 +115,10 @@
 					const buildingData = map.querySourceFeatures('composite', { sourceLayer: 'building' }).filter((feature) => {
 						return feature.properties && feature.properties.underground !== "true" && (feature.properties.height || feature.properties.render_height)
 					});
-					// Print all building polygons that will be used for shadow simulation
-					buildingData.forEach((feature, idx) => {
-						console.log(`Building polygon #${idx + 1}:`, feature.geometry.coordinates);
-					});
 					return buildingData;
 				},
 				debug: (msg) => { console.log(new Date().toISOString(), msg) }
 			}).addTo(map);
-
-			// --- Shadow polygon outline logic ---
-			let shadowOutlineSource = 'shadow-outline';
-			let shadowOutlineLayer = 'shadow-outline-layer';
-
-			function drawShadowOutlines(polygons) {
-				const outlineFeatures = polygons.map((coords) => ({
-					type: 'Feature',
-					geometry: { type: 'Polygon', coordinates: coords },
-					properties: {}
-				}));
-				const outlineGeoJSON = { type: 'FeatureCollection', features: outlineFeatures };
-				if (map.getSource(shadowOutlineSource)) {
-					map.getSource(shadowOutlineSource).setData(outlineGeoJSON);
-				} else {
-					map.addSource(shadowOutlineSource, {
-						type: 'geojson',
-						data: outlineGeoJSON
-					});
-					map.addLayer({
-						id: shadowOutlineLayer,
-						type: 'line',
-						source: shadowOutlineSource,
-						paint: {
-							'line-color': '#ff0000',
-							'line-width': 2
-						}
-					});
-				}
-			}
-
-			// Print and outline all polygons that will be rendered before shadows load
-			shadeMap.on('tileloaded', () => {
-				if (typeof shadeMap.getShadeMask === 'function') {
-					const polygons = shadeMap.getShadeMask();
-					const bounds = map.getBounds();
-					const sw = bounds.getSouthWest();
-					const ne = bounds.getNorthEast();
-					const bbox = [sw.lng, sw.lat, ne.lng, ne.lat];
-					// Helper: check if any point of polygon is inside bbox
-					function polygonInBounds(poly, bbox) {
-						return poly.some(([lng, lat]) =>
-							lng >= bbox[0] && lng <= bbox[2] && lat >= bbox[1] && lat <= bbox[3]
-						);
-					}
-					polygons.forEach((poly, idx) => {
-						if (polygonInBounds(poly, bbox)) {
-							console.log(`Visible shadow polygon #${idx + 1} coordinates:`, poly);
-						}
-					});
-					drawShadowOutlines(polygons);
-				}
-			});
 
 			shadeMap.on('tileloaded', (loadedTiles, totalTiles) => {
 				loaderEl.innerText = `Loading: ${(loadedTiles / totalTiles * 100).toFixed(0)}%`;
@@ -249,67 +192,6 @@
 			}
 		})
 		/* End controls setup */
-
-		// --- Shade Polygon Visualization ---
-		function drawShadePolygons() {
-			const center = [-122.18578164139899, 47.694878957368815];
-			const radius = 1; // km
-			const shadeFeatures = [];
-			// Get shade mask from ShadeMap (assume shadeMap.getShadeMask() returns array of polygons in [lng, lat] format)
-			if (shadeMap && typeof shadeMap.getShadeMask === 'function') {
-				const polygons = shadeMap.getShadeMask();
-				for (const poly of polygons) {
-					shadeFeatures.push({
-						type: 'Feature',
-						geometry: { type: 'Polygon', coordinates: [poly] },
-						properties: {}
-					});
-				}
-			}
-
-			// Add or update the shade polygons source
-			if (map.getSource('shade-polygons')) {
-				map.getSource('shade-polygons').setData({ type: 'FeatureCollection', features: shadeFeatures });
-			} else {
-				map.addSource('shade-polygons', {
-					type: 'geojson',
-					data: { type: 'FeatureCollection', features: shadeFeatures }
-				});
-				map.addLayer({
-					id: 'shade-polygons-layer',
-					type: 'fill',
-					source: 'shade-polygons',
-					paint: {
-						'fill-color': '#01112f',
-						'fill-opacity': 0.4
-					}
-				});
-			}
-
-			// Add or update the red outline for each shadow polygon
-			if (map.getSource('shade-outline')) {
-				map.getSource('shade-outline').setData({ type: 'FeatureCollection', features: shadeFeatures });
-			} else {
-				map.addSource('shade-outline', {
-					type: 'geojson',
-					data: { type: 'FeatureCollection', features: shadeFeatures }
-				});
-				map.addLayer({
-					id: 'shade-outline-layer',
-					type: 'line',
-					source: 'shade-outline',
-					paint: {
-						'line-color': '#ff0000',
-						'line-width': 2
-					}
-				});
-			}
-		}
-
-		// Draw polygons after shade tiles load
-		shadeMap.on('tileloaded', drawShadePolygons);
-		// Initial draw
-		setTimeout(drawShadePolygons, 2000);
 	</script>
 </body>
 
