@@ -2,7 +2,7 @@ import express from "express";
 const axios = require('axios');
 const router = express.Router();
 
-// POST /distance_only
+// POST /duration_only
 router.post('/', async (req, res) => {
   const { start, end, mode } = req.body;
   const mapboxToken = process.env.MAPBOX_TOKEN;
@@ -10,13 +10,10 @@ router.post('/', async (req, res) => {
   try {
     const response = await axios.get(url);
     const route = response.data.routes[0];
-    res.json({ 
-        geometry: route.geometry,
-        duration: route.duration,
-        distance: route.distance });
+    res.json({ distance: route.duration });
   } catch (error) {
     console.error(error);
-    res.status(500).send("Error fetching distance");
+    res.status(500).send("Error fetching duration");
   }
 });
 

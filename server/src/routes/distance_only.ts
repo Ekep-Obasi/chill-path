@@ -10,10 +10,7 @@ router.post('/', async (req, res) => {
   try {
     const response = await axios.get(url);
     const route = response.data.routes[0];
-    res.json({ 
-        geometry: route.geometry,
-        duration: route.duration,
-        distance: route.distance });
+    res.json({ distance: route.distance });
   } catch (error) {
     console.error(error);
     res.status(500).send("Error fetching distance");
