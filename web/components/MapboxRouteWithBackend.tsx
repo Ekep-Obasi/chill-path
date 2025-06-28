@@ -3,8 +3,8 @@ import mapboxgl from "mapbox-gl";
 
 mapboxgl.accessToken = "sk.eyJ1IjoiYXpyYWZhbG1hcyIsImEiOiJjbWNnazI1YmUwbGhtMnFweDJ3aTZxazQzIn0.y2m1lqFzQFBp3u7oAc64Lg";
 
-const start = [-122.483696, 37.833818];
-const end = [-122.489876, 37.832632];
+const start: [number, number] = [-122.483696, 37.833818];
+const end: [number, number] = [-122.489876, 37.832632];
 const mode = "walking";
 const BACKEND_URL = "http://localhost:9000/route"; // Change port if needed
 

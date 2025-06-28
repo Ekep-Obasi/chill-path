@@ -8,6 +8,8 @@ const distance_only = require("./routes/distance_only");
 const duration_only = require("./routes/duration_only");
 const mapping = require("./routes/mapping");
 import { getFountains, getPackageData } from './routes/get_fountains';
+import { getBenches } from './routes/get_benches';
+import { getWashrooms } from "./routes/get_washrooms";
 
 (async () => {
   const app: Express = express();
@@ -21,10 +23,12 @@ import { getFountains, getPackageData } from './routes/get_fountains';
   
   // Use the route handlers
   app.get('/fountains', getFountains);
-  app.get('/packages', getPackageData);
+  app.get('/api/package/:packageId', getPackageData);
+  app.get('/benches', getBenches);  
+  app.get('/washrooms', getWashrooms);
 
   app.listen(PORT, () => {
     console.log(`server is listening to port ${PORT}`);
   });
-
+  
 })();

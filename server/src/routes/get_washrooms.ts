@@ -36,6 +36,9 @@ interface CoordinateInfo {
     address?: string;
     type?: string;
     description?: string;
+    facilityName?: string;
+    accessible?: boolean;
+    hours?: string;
 }
 
 interface AllPackageData {
@@ -45,13 +48,16 @@ interface AllPackageData {
     resources: ResourceWithData[];
 }
 
-// Updated interface for fountain response
-interface FountainInfo {
+// Updated interface for washroom response
+interface WashroomInfo {
     latitude: number;
     longitude: number;
     type?: string;
     description?: string;
     address?: string;
+    facilityName?: string;
+    accessible?: boolean;
+    hours?: string;
     recordId?: string | number;
 }
 
@@ -130,7 +136,7 @@ const extractCoordinates = (records: any[]): CoordinateInfo[] => {
         }
 
         // Look for address or location description
-        const addressFields = ['address', 'location', 'Address', 'LOCATION', 'street_address'];
+        const addressFields = ['address', 'location', 'Address', 'LOCATION', 'street_address', 'ADDRESS'];
         for (const field of addressFields) {
             if (record[field]) {
                 coordInfo.address = record[field];
@@ -138,8 +144,17 @@ const extractCoordinates = (records: any[]): CoordinateInfo[] => {
             }
         }
 
+        // Look for facility name
+        const nameFields = ['name', 'Name', 'NAME', 'facility_name', 'FACILITY_NAME', 'asset_name', 'ASSET_NAME'];
+        for (const field of nameFields) {
+            if (record[field]) {
+                coordInfo.facilityName = record[field];
+                break;
+            }
+        }
+
         // Look for type information
-        const typeFields = ['type', 'Type', 'TYPE', 'category', 'Category', 'CATEGORY', 'fountain_type', 'kind'];
+        const typeFields = ['type', 'Type', 'TYPE', 'category', 'Category', 'CATEGORY', 'washroom_type', 'facility_type'];
         for (const field of typeFields) {
             if (record[field]) {
                 coordInfo.type = record[field];
@@ -152,6 +167,24 @@ const extractCoordinates = (records: any[]): CoordinateInfo[] => {
         for (const field of descriptionFields) {
             if (record[field]) {
                 coordInfo.description = record[field];
+                break;
+            }
+        }
+
+        // Look for accessibility information
+        const accessibilityFields = ['accessible', 'Accessible', 'ACCESSIBLE', 'accessibility', 'barrier_free', 'BARRIER_FREE'];
+        for (const field of accessibilityFields) {
+            if (record[field] !== undefined) {
+                coordInfo.accessible = Boolean(record[field]);
+                break;
+            }
+        }
+
+        // Look for hours information
+        const hoursFields = ['hours', 'Hours', 'HOURS', 'operating_hours', 'OPERATING_HOURS', 'open_hours'];
+        for (const field of hoursFields) {
+            if (record[field]) {
+                coordInfo.hours = record[field];
                 break;
             }
         }
@@ -204,26 +237,29 @@ async function getAllPackageData(packageId: string): Promise<AllPackageData> {
     }
 }
 
-// Express route handler for getting fountains data (with type and description)
-const getFountains = async (req: Request, res: Response): Promise<void> => {
+// Express route handler for getting washrooms data
+const getWashrooms = async (req: Request, res: Response): Promise<void> => {
     try {
-        const packageId = "f614d4d3-594a-4f78-8473-faaa17269c67"; // Toronto fountains package ID
+        const packageId = "washroom-facilities"; // Toronto washrooms package ID
         
         const data = await getAllPackageData(packageId);
         
-        // Extract coordinates with type and description from all resources
-        const allFountains: FountainInfo[] = [];
+        // Extract coordinates with washroom info from all resources
+        const allWashrooms: WashroomInfo[] = [];
         
         data.resources.forEach(resource => {
             if (resource.coordinates) {
                 resource.coordinates.forEach(coord => {
                     if (coord.latitude && coord.longitude) {
-                        allFountains.push({
+                        allWashrooms.push({
                             latitude: coord.latitude,
                             longitude: coord.longitude,
                             type: coord.type,
                             description: coord.description,
                             address: coord.address,
+                            facilityName: coord.facilityName,
+                            accessible: coord.accessible,
+                            hours: coord.hours,
                             recordId: coord.recordId
                         });
                     }
@@ -231,14 +267,14 @@ const getFountains = async (req: Request, res: Response): Promise<void> => {
             }
         });
         
-        // Send the enhanced fountains array
-        res.json(allFountains);
+        // Send the washrooms array
+        res.json(allWashrooms);
         
     } catch (error: any) {
-        console.error("Error fetching fountains data:", error.message);
+        console.error("Error fetching washrooms data:", error.message);
         res.status(500).json({
             success: false,
-            message: "Failed to fetch fountains data",
+            message: "Failed to fetch washrooms data",
             error: error.message
         });
     }
@@ -276,4 +312,4 @@ const getPackageData = async (req: Request, res: Response): Promise<void> => {
 };
 
 // Export the route handlers and types
-export { getFountains, getPackageData, getAllPackageData, ResourceWithData, CoordinateInfo, FountainInfo };
+export { getWashrooms, getPackageData, getAllPackageData, ResourceWithData, CoordinateInfo, WashroomInfo };

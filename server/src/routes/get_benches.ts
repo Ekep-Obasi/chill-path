@@ -55,6 +55,16 @@ interface FountainInfo {
     recordId?: string | number;
 }
 
+// Interface for bench response
+interface BenchInfo {
+    latitude: number;
+    longitude: number;
+    type?: string;
+    description?: string;
+    address?: string;
+    recordId?: string | number;
+}
+
 // Generic function to make HTTPS requests
 const makeRequest = (url: string): Promise<any> => {
     return new Promise((resolve, reject) => {
@@ -81,8 +91,14 @@ const makeRequest = (url: string): Promise<any> => {
 };
 
 // Function to extract coordinates from record data
-const extractCoordinates = (records: any[]): CoordinateInfo[] => {
+const extractCoordinates = (records: any[], resourceName?: string): CoordinateInfo[] => {
     return records.map((record, index) => {
+        // Debug logging for benches specifically
+        if (resourceName && resourceName.toLowerCase().includes('bench')) {
+            console.log('Bench record fields:', Object.keys(record));
+            console.log('Sample bench record:', record);
+        }
+        
         const coordInfo: CoordinateInfo = {
             recordId: record._id || record.id || index
         };
@@ -130,7 +146,7 @@ const extractCoordinates = (records: any[]): CoordinateInfo[] => {
         }
 
         // Look for address or location description
-        const addressFields = ['address', 'location', 'Address', 'LOCATION', 'street_address'];
+        const addressFields = ['address', 'location', 'Address', 'LOCATION', 'street_address', 'STREET_ADDRESS', 'park_name', 'PARK_NAME', 'site_name', 'SITE_NAME'];
         for (const field of addressFields) {
             if (record[field]) {
                 coordInfo.address = record[field];
@@ -138,20 +154,48 @@ const extractCoordinates = (records: any[]): CoordinateInfo[] => {
             }
         }
 
-        // Look for type information
-        const typeFields = ['type', 'Type', 'TYPE', 'category', 'Category', 'CATEGORY', 'fountain_type', 'kind'];
+        // Look for type information (comprehensive field list) - Added bench-specific fields
+        const typeFields = [
+            'type', 'Type', 'TYPE', 
+            'category', 'Category', 'CATEGORY', 
+            'fountain_type', 'bench_type', 'asset_type', 'feature_type',
+            'kind', 'Kind', 'KIND',
+            'classification', 'Classification', 'CLASSIFICATION',
+            'asset_class', 'ASSET_CLASS',
+            'feature_class', 'FEATURE_CLASS',
+            'object_type', 'OBJECT_TYPE',
+            'amenity_type', 'AMENITY_TYPE',
+            'bench_style', 'BENCH_STYLE',
+            'material', 'Material', 'MATERIAL'
+        ];
         for (const field of typeFields) {
-            if (record[field]) {
-                coordInfo.type = record[field];
+            if (record[field] !== undefined && record[field] !== null && record[field] !== '') {
+                coordInfo.type = String(record[field]).trim();
                 break;
             }
         }
 
-        // Look for description information
-        const descriptionFields = ['description', 'Description', 'DESCRIPTION', 'notes', 'Notes', 'NOTES', 'details', 'info'];
+        // Look for description information (comprehensive field list) - Added bench-specific fields  
+        const descriptionFields = [
+            'description', 'Description', 'DESCRIPTION', 
+            'notes', 'Notes', 'NOTES', 
+            'details', 'Details', 'DETAILS',
+            'info', 'Info', 'INFO',
+            'comment', 'Comment', 'COMMENT',
+            'remarks', 'Remarks', 'REMARKS',
+            'name', 'Name', 'NAME',
+            'title', 'Title', 'TITLE',
+            'label', 'Label', 'LABEL',
+            'feature_desc', 'FEATURE_DESC',
+            'asset_desc', 'ASSET_DESC',
+            'comments', 'Comments', 'COMMENTS',
+            'memorial_text', 'MEMORIAL_TEXT',
+            'inscription', 'Inscription', 'INSCRIPTION',
+            'dedication', 'Dedication', 'DEDICATION'
+        ];
         for (const field of descriptionFields) {
-            if (record[field]) {
-                coordInfo.description = record[field];
+            if (record[field] !== undefined && record[field] !== null && record[field] !== '') {
+                coordInfo.description = String(record[field]).trim();
                 break;
             }
         }
@@ -179,8 +223,8 @@ async function getAllPackageData(packageId: string): Promise<AllPackageData> {
                 const resourceUrl = `https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action/datastore_search?id=${resource.id}&limit=10000`;
                 const resourceData = await makeRequest(resourceUrl) as DatastoreResponse;
                 
-                // Extract coordinates from the records
-                const coordinates = extractCoordinates(resourceData.records);
+                // Extract coordinates from the records, pass resource name for debugging
+                const coordinates = extractCoordinates(resourceData.records, resource.name);
                 
                 return {
                     resourceId: resource.id,
@@ -244,6 +288,46 @@ const getFountains = async (req: Request, res: Response): Promise<void> => {
     }
 };
 
+// Express route handler for getting benches data (with type and description)
+const getBenches = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const packageId = "20e06199-c6a6-4846-9a0c-2b6375283a0c"; // Toronto benches package ID
+        
+        const data = await getAllPackageData(packageId);
+        
+        // Extract coordinates with type and description from all resources
+        const allBenches: BenchInfo[] = [];
+        
+        data.resources.forEach(resource => {
+            if (resource.coordinates) {
+                resource.coordinates.forEach(coord => {
+                    if (coord.latitude && coord.longitude) {
+                        allBenches.push({
+                            latitude: coord.latitude,
+                            longitude: coord.longitude,
+                            type: coord.type,
+                            description: coord.description,
+                            address: coord.address,
+                            recordId: coord.recordId
+                        });
+                    }
+                });
+            }
+        });
+        
+        // Send the enhanced benches array
+        res.json(allBenches);
+        
+    } catch (error: any) {
+        console.error("Error fetching benches data:", error.message);
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch benches data",
+            error: error.message
+        });
+    }
+};
+
 // Alternative route handler that accepts package ID as parameter
 const getPackageData = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -276,4 +360,4 @@ const getPackageData = async (req: Request, res: Response): Promise<void> => {
 };
 
 // Export the route handlers and types
-export { getFountains, getPackageData, getAllPackageData, ResourceWithData, CoordinateInfo, FountainInfo };
+export { getFountains, getBenches, getPackageData, getAllPackageData, ResourceWithData, CoordinateInfo, FountainInfo, BenchInfo };
