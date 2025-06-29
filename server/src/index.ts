@@ -23,7 +23,6 @@ import { getWashrooms } from "./routes/get_washrooms";
   
   // Use the route handlers
   app.get('/fountains', getFountains);
-  app.get('/api/package/:packageId', getPackageData);
   app.get('/benches', getBenches);  
   app.get('/washrooms', getWashrooms);
 
