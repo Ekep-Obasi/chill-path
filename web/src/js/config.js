@@ -28,6 +28,16 @@ window.CONFIG = {
     },
   },
 
+  // Gemini AI Configuration
+  GEMINI: {
+    API_KEY: "AIzaSyAiiKLokJBzL766sGuk0P9ltaM7edyzQiE", // Replace with your actual Gemini API key
+    API_URL:
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent",
+    MODEL: "gemini-pro",
+    MAX_TOKENS: 200,
+    TEMPERATURE: 0.7,
+  },
+
   // Location Configuration (Toronto Metropolitan University)
   LOCATION: {
     CENTER: {
@@ -70,5 +80,12 @@ window.CONFIG = {
   UI: {
     TIME_UPDATE_INTERVAL: 60000, // 1 minute
     DEFAULT_TIME: "12:00",
+  },
+
+  // Chatbot Configuration
+  CHATBOT: {
+    MAX_CONVERSATION_LENGTH: 20, // Keep last 20 messages
+    TYPING_DELAY: 1000, // 1 second typing indicator
+    MAX_MESSAGE_LENGTH: 500,
   },
 };

@@ -63,7 +63,11 @@ window.MapManager = class {
       if (layers) {
         layers.forEach((layer) => {
           if (layer.type === "symbol") {
-            this.map.removeLayer(layer.id);
+            try {
+              this.map.removeLayer(layer.id);
+            } catch (e) {
+              // Layer might already be removed, ignore error
+            }
           }
         });
       }
@@ -94,8 +98,11 @@ window.MapManager = class {
    */
   async initializeShadeMap() {
     try {
+      // Check if ShadeMap is available
       if (typeof ShadeMap === "undefined") {
-        console.warn("ShadeMap library not loaded");
+        console.warn(
+          "ShadeMap library not loaded - shadows will use fallback system",
+        );
         return;
       }
 
@@ -123,9 +130,10 @@ window.MapManager = class {
         debug: (msg) => window.log(`ShadeMap: ${msg}`),
       }).addTo(this.map);
 
-      window.log("ShadeMap initialized");
+      window.log("ShadeMap initialized successfully");
     } catch (error) {
       console.error("Failed to initialize ShadeMap:", error);
+      window.log("ShadeMap failed - using fallback shadow system");
     }
   }
 
@@ -134,9 +142,13 @@ window.MapManager = class {
    */
   updateShadeMapTime(timeStr) {
     if (this.shadeMap && window.ValidationUtils.isValidTime(timeStr)) {
-      const date = window.TimeUtils.createDateFromTime(timeStr);
-      this.shadeMap.setDate(date);
-      window.log(`ShadeMap time updated to: ${timeStr}`);
+      try {
+        const date = window.TimeUtils.createDateFromTime(timeStr);
+        this.shadeMap.setDate(date);
+        window.log(`ShadeMap time updated to: ${timeStr}`);
+      } catch (error) {
+        console.error("Error updating ShadeMap time:", error);
+      }
     }
   }
 

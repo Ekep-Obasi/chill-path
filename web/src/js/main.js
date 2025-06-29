@@ -10,6 +10,7 @@ window.mapManager = null;
 window.shadeSystem = null;
 window.startAutocomplete = null;
 window.endAutocomplete = null;
+window.heatSafeChatbot = null;
 
 /**
  * Update button states based on coordinate availability
@@ -243,6 +244,23 @@ async function initializePOIs() {
 }
 
 /**
+ * Initialize Heat Safety Chatbot
+ */
+function initializeChatbot() {
+  window.heatSafeChatbot = new window.HeatSafeChatbot();
+
+  // Integrate with main app components
+  if (window.mapManager) {
+    window.heatSafeChatbot.integrateWithApp(
+      window.mapManager,
+      window.RoutingSystem,
+    );
+  }
+
+  window.log("Heat Safety Chatbot initialized");
+}
+
+/**
  * Main initialization function
  */
 async function initializeApp() {
@@ -270,6 +288,9 @@ async function initializeApp() {
       "end-validation",
       "destination",
     );
+
+    // Initialize chatbot
+    initializeChatbot();
 
     // Initialize time controls
     initializeTimeControls();

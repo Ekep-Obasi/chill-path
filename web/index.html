@@ -18,7 +18,7 @@
     <script src="https://api.mapbox.com/mapbox-gl-js/v2.8.2/mapbox-gl.js"></script>
     <script src="https://www.unpkg.com/suncalc@1.9.0/suncalc.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6.5.0/turf.min.js"></script>
-    <script src="lib/mapbox-gl-shadow-simulator.umd.min.js"></script>
+    <script src="./src/dist/mapbox-gl-shadow-simulator.umd.min.js"></script>
   </head>
   <body>
     <div class="control-panel">
@@ -92,13 +92,91 @@
         <button id="show-highways" class="btn btn-secondary btn-full">
           Show Road Network
         </button>
-        <div class="info-box">
-          Click anywhere on the map to check if a location is in shade.
-        </div>
       </div>
     </div>
 
     <div id="map"></div>
+
+    <!-- Heat Safety AI Chatbot -->
+    <div id="heat-ai-container" class="heat-ai-container">
+      <div id="heat-ai-fab" class="heat-ai-fab">
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path
+            d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+          />
+        </svg>
+      </div>
+
+      <div id="heat-ai-chat" class="heat-ai-chat">
+        <div class="heat-ai-header">
+          <div class="heat-ai-info">
+            <div class="heat-ai-avatar">🌡️</div>
+            <div>
+              <div class="heat-ai-title">HeatSafe AI</div>
+              <div class="heat-ai-subtitle">Always here to help</div>
+            </div>
+          </div>
+          <button id="heat-ai-close" class="heat-ai-close">×</button>
+        </div>
+
+        <div id="heat-ai-messages" class="heat-ai-messages">
+          <div class="heat-ai-message ai-message">
+            <div class="message-content">
+              🌡️ Current temperature is 38°C. That's very hot. How can I help
+              keep you safe?
+            </div>
+          </div>
+
+          <div class="heat-ai-actions">
+            <div class="action-title">Quick actions:</div>
+            <div class="action-buttons">
+              <button class="action-btn" data-action="outfit">
+                👕 Check my outfit
+              </button>
+              <button class="action-btn" data-action="cooling">
+                🏢 Find cooling centers
+              </button>
+              <button class="action-btn" data-action="route">
+                🚶 Safe route planning
+              </button>
+              <button class="action-btn" data-action="emergency">
+                🆘 I feel unwell
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="heat-ai-input-container">
+          <input
+            type="text"
+            id="heat-ai-input"
+            class="heat-ai-input"
+            placeholder="Ask about heat safety..."
+            maxlength="500"
+          />
+          <button id="heat-ai-send" class="heat-ai-send">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22,2 15,22 11,13 2,9"></polygon>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
 
     <!-- Application JavaScript -->
     <script src="./src/js/config.js"></script>
@@ -109,6 +187,7 @@
     <script src="./src/js/routing.js"></script>
     <script src="./src/js/poiManager.js"></script>
     <script src="./src/js/geolocation.js"></script>
+    <script src="./src/js/chatbot.js"></script>
     <script src="./src/js/main.js"></script>
   </body>
 </html>
