@@ -54,13 +54,13 @@ async function initializeUserLocation() {
     if (window.mapManager && window.mapManager.getMap) {
         const map = window.mapManager.getMap();
       if (map && map.loaded()) {
-        new mapboxgl.Marker({ color: "#4285F4" })
+        new mapboxgl.Marker({ color: "#FF0000" })
           .setLngLat(coordinates)
           .setPopup(new mapboxgl.Popup().setText("You are here"))
           .addTo(map);
       } else if (map) {
         map.once("load", () => {
-          new mapboxgl.Marker({ color: "#4285F4" })
+          new mapboxgl.Marker({ color: "#FF0000" })
             .setLngLat(coordinates)
             .setPopup(new mapboxgl.Popup().setText("You are here"))
             .addTo(map);

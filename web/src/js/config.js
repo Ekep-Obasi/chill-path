@@ -17,7 +17,7 @@ window.CONFIG = {
     API_KEY:
       "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjFzYWtpYi51ZGRpbkBnbWFpbC5jb20iLCJjcmVhdGVkIjoxNzUxMTI5NjcyMTQ2LCJpYXQiOjE3NTExMjk2NzJ9.kE8qlYMd5W_J_p6rRgiwrcAHr9oHbN_ICx4nRzHyOFI",
     COLOR: "#888888",
-    OPACITY: 0.7,
+    OPACITY: 0.82,
     TERRAIN_CONFIG: {
       maxZoom: 15,
       tileSize: 256,

@@ -51,27 +51,31 @@ window.MapManager = class {
     this.map.on("load", () => {
       this.isLoaded = true;
       this.onMapLoad();
+      // Ensure building and place label layers are visible
+      this.showBuildingAndPlaceLabels();
     });
 
     this.map.on("style.load", () => {
       this.onStyleLoad();
+      // Ensure building and place label layers are visible after style reload
+      this.showBuildingAndPlaceLabels();
     });
 
     // Remove default POI and place labels for cleaner map
-    this.map.on("style.load", () => {
-      const layers = this.map.getStyle().layers;
-      if (layers) {
-        layers.forEach((layer) => {
-          if (layer.type === "symbol") {
-            try {
-              this.map.removeLayer(layer.id);
-            } catch (e) {
-              // Layer might already be removed, ignore error
-            }
-          }
-        });
-      }
-    });
+    // this.map.on("style.load", () => {
+    //   const layers = this.map.getStyle().layers;
+    //   if (layers) {
+    //     layers.forEach((layer) => {
+    //       if (layer.type === "symbol") {
+    //         try {
+    //           this.map.removeLayer(layer.id);
+    //         } catch (e) {
+    //           // Layer might already be removed, ignore error
+    //         }
+    //       }
+    //     });
+    //   }
+    // });
   }
 
   /**
@@ -385,6 +389,27 @@ window.MapManager = class {
   reAddAllMarkers() {
     // This will be called by POI manager
     window.log("Re-adding markers after style reload");
+  }
+
+  /**
+   * Show building and place label layers on the map
+   */
+  showBuildingAndPlaceLabels() {
+    const map = this.map;
+    if (!map || !map.getStyle) return;
+    const style = map.getStyle();
+    if (!style || !style.layers) return;
+    style.layers.forEach((layer) => {
+      // Show symbol layers for labels (buildings, places, POIs)
+      if (layer.type === "symbol" &&
+          (layer.id.includes("label") || layer.id.includes("place") || layer.id.includes("building"))) {
+        try {
+          map.setLayoutProperty(layer.id, "visibility", "visible");
+        } catch (e) {
+          // Ignore errors for non-toggleable layers
+        }
+      }
+    });
   }
 
   /**
