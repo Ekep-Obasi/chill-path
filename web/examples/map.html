@@ -56,9 +56,12 @@
 					<button id="play">Play</button>
 					<button id="stop">Stop</button>
 					<label><input id="exposure" type="checkbox" autocomplete="off" />Full-day sun exposure</label>
+					<input type="time" id="shade-time" value="12:00" style="margin-left:8px;">
+					<button id="set-shade-time">Set Time</button>
 					<button>
 						<a href="https://shademap.app/about" target="_blank">Get API key</a>
 					</button>
+					<button id="toggle-graph">Toggle Highway Graph</button>
 					<span id="loader" style="padding: 3px;"></span>
 				</div>
 				<div id="exposure-gradient-container">
@@ -69,6 +72,13 @@
 		</div>
 	</div>
 	<script>
+		// Injected from .env (for demo purposes)
+		const MAPBOX_API_KEY = "pk.eyJ1IjoiYXpyYWZhbG1hcyIsImEiOiJjbWNnaXhkNjMwbGNqMmpwdGlndXZ2ZnVtIn0.mTHFqXv1Ao_h2QptWhtmlg";
+		const SHADEMAP_API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjFzYWtpYi51ZGRpbkBnbWFpbC5jb20iLCJjcmVhdGVkIjoxNzUxMTI5NjcyMTQ2LCJpYXQiOjE3NTExMjk2NzJ9.kE8qlYMd5W_J_p6rRgiwrcAHr9oHbN_ICx4nRzHyOFI";
+
+		// --- GLOBALS ---
+		let shadedCoords = [];
+
 		const mapLoaded = (map) => {
 			return new Promise((res, rej) => {
 				function cb() {
@@ -83,7 +93,7 @@
 			});
 		};
 		/* Mapbox setup */
-		mapboxgl.accessToken = 'pk.eyJ1IjoidHBwaW90cm93c2tpIiwiYSI6ImNsNGVpdzMxYzAzenUzb28zYXZ4MXdlc2EifQ.M4IHx7SY0Wv5Zt6xzvKeBQ';
+		mapboxgl.accessToken = MAPBOX_API_KEY;
 		const map = new mapboxgl.Map({
 			container: 'mapid',
 			style: 'mapbox://styles/mapbox/streets-v11',
@@ -99,9 +109,9 @@
 		let shadeMap;
 		map.on('load', () => {
 			shadeMap = new ShadeMap({
-				apiKey: "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6InRwcGlvdHJvd3NraUBzaGFkZW1hcC5hcHAiLCJjcmVhdGVkIjoxNjYyNDkzMDY2Nzk0LCJpYXQiOjE2NjI0OTMwNjZ9.ovCrLTYsdKFTF6TW3DuODxCaAtGQ3qhcmqj3DWcol5g",
+				apiKey: SHADEMAP_API_KEY,
 				date: now,
-				color: '#01112f',
+				color: '#ff0000', // Red color for shadows
 				opacity: 0.7,
 				terrainSource: {
 					maxZoom: 15,
@@ -122,6 +132,114 @@
 
 			shadeMap.on('tileloaded', (loadedTiles, totalTiles) => {
 				loaderEl.innerText = `Loading: ${(loadedTiles / totalTiles * 100).toFixed(0)}%`;
+			});
+
+			// --- Shade extraction and event listeners ---
+			function updateShadedCoords() {
+				if (shadeMap && shadeMap.renderer && map) {
+					shadedCoords = extractShadedCoords(shadeMap.renderer, map);
+					console.log('[Shade Debug] Shaded coordinates updated.');
+				} else {
+					console.log('[Shade Debug] ShadeMap or renderer not ready.');
+				}
+			}
+			shadeMap.on('render', updateShadedCoords);
+			shadeMap.on('tileloaded', updateShadedCoords);
+
+			function getPixelColorAtMapClick(e) {
+				if (!shadeMap || !shadeMap.renderer) {
+					console.log('[Shade Debug] ShadeMap or renderer not ready.');
+					return;
+				}
+				const gl = shadeMap.renderer.getContext();
+				const canvas = shadeMap.renderer.domElement;
+				const rect = canvas.getBoundingClientRect();
+				// Mapbox click event gives lngLat and point (screen pixel)
+				const x = Math.round((e.point.x / map.getContainer().clientWidth) * gl.drawingBufferWidth);
+				const y = Math.round((e.point.y / map.getContainer().clientHeight) * gl.drawingBufferHeight);
+				const pixels = new Uint8Array(4);
+				// Flip y for WebGL
+				const flippedY = gl.drawingBufferHeight - y;
+				gl.readPixels(x, flippedY, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+				const [r, g, b, a] = pixels;
+				const isShadow = (r === g && g === b && r < 200 && a > 0); // grey or black shadow
+				console.log(`[Shade Debug] Clicked at ${e.lngLat.lng.toFixed(6)}, ${e.lngLat.lat.toFixed(6)}. Pixel RGBA: [${r},${g},${b},${a}]. Shadow: ${isShadow}`);
+				if (isShadow) {
+					const lngLat = map.unproject([e.point.x, e.point.y]);
+					console.log(`[Shade Debug] Shadow pixel at real-world coordinate: [${lngLat.lng}, ${lngLat.lat}]`);
+				}
+			}
+
+			function getPixelAndWorldCoordsAtMapClick(e) {
+				const mapboxPoint = e.point;
+				const lngLat = map.unproject([mapboxPoint.x, mapboxPoint.y]);
+				const canvas = shadeMap && shadeMap.renderer ? shadeMap.renderer.domElement : null;
+				let isRedShadow = false;
+				if (canvas) {
+					const rect = canvas.getBoundingClientRect();
+					// Mouse event coordinates relative to viewport
+					const clientX = e.originalEvent.clientX;
+					const clientY = e.originalEvent.clientY;
+					// Map to canvas pixel coordinates
+					const x = Math.round((clientX - rect.left) * (canvas.width / rect.width));
+					const y = Math.round((clientY - rect.top) * (canvas.height / rect.height));
+					const gl = shadeMap.renderer.getContext();
+					const flippedY = gl.drawingBufferHeight - y;
+					const pixels = new Uint8Array(4);
+					gl.readPixels(x, flippedY, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+					const [r, g, b, a] = pixels;
+					isRedShadow = (r > 150 && g < 100 && b < 100 && a > 0);
+					console.log(`[Pixel Mapping] Screen: (${clientX}, ${clientY}), Canvas pixel: (${x}, ${flippedY}), RGBA: [${r},${g},${b},${a}], Red Shadow: ${isRedShadow}`);
+				} else {
+					console.log('[Pixel Mapping] ShadeMap renderer not ready, showing only mapbox point.');
+				}
+				console.log(`[Pixel Mapping] Real-world coordinate: [${lngLat.lng}, ${lngLat.lat}]`);
+				if (isRedShadow) {
+					console.log('[Shade Debug] This coordinate is in a red shadow!');
+				} else {
+					console.log('[Shade Debug] This coordinate is NOT in a red shadow.');
+				}
+			}
+
+			// Utility: Check if a [lng, lat] coordinate is in a shadow (red pixel)
+			function isCoordInRedShadow(lng, lat, shadeMap, map) {
+				if (!shadeMap || !shadeMap.renderer) {
+					console.log('[Shade Debug] ShadeMap or renderer not ready.');
+					return false;
+				}
+				const canvas = shadeMap.renderer.domElement;
+				const gl = shadeMap.renderer.getContext();
+				const rect = canvas.getBoundingClientRect();
+				// Project lng/lat to screen pixel
+				const point = map.project({ lng, lat });
+				// Map screen pixel to canvas pixel
+				const x = Math.round((point.x / map.getContainer().clientWidth) * gl.drawingBufferWidth);
+				const y = Math.round((point.y / map.getContainer().clientHeight) * gl.drawingBufferHeight);
+				const flippedY = gl.drawingBufferHeight - y;
+				const pixels = new Uint8Array(4);
+				gl.readPixels(x, flippedY, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+				const [r, g, b, a] = pixels;
+				const isRedShadow = (r > 150 && g < 100 && b < 100 && a > 0);
+				return isRedShadow;
+			}
+
+			// Example usage: click to test if a coordinate is in a shadow
+			map.off('click');
+			map.on('click', (e) => {
+				const lng = e.lngLat.lng;
+				const lat = e.lngLat.lat;
+				const inShadow = isCoordInRedShadow(lng, lat, shadeMap, map);
+				console.log(`[Shadow Test] Coordinate [${lng}, ${lat}] is in shadow: ${inShadow}`);
+			});
+
+			map.on('click', (e) => {
+				const coord = [e.lngLat.lng, e.lngLat.lat];
+				if (!shadedCoords || shadedCoords.length === 0) {
+					console.log('[Shade Debug] No shadedCoords loaded yet.');
+					return;
+				}
+				const shaded = isNearShaded(coord, shadedCoords);
+				console.log(`[Shade Debug] Clicked at ${coord[0].toFixed(6)}, ${coord[1].toFixed(6)}. Shaded: ${shaded}`);
 			});
 		});
 		/* End ShadeMap setup */
@@ -191,7 +309,119 @@
 				exposureGradient.innerHTML = html.join('');
 			}
 		})
+
+		const shadeTimeInput = document.getElementById('shade-time');
+		const setShadeTimeBtn = document.getElementById('set-shade-time');
+		setShadeTimeBtn.addEventListener('click', () => {
+			const timeStr = shadeTimeInput.value;
+			if (!timeStr) return;
+			const [hh, mm] = timeStr.split(":");
+			const today = new Date();
+			now = new Date(today.getFullYear(), today.getMonth(), today.getDate(), parseInt(hh), parseInt(mm));
+			shadeMap && shadeMap.setDate(now);
+		});
 		/* End controls setup */
+
+		// Fetch highways from Overpass API for Toronto metropolitan area and build a graph
+		let highwayGraphVisible = false;
+		let highwayGeojson = null;
+
+		async function fetchHighwayGraph() {
+			// BBox within 1km of Toronto Metropolitan University (center: 43.6577, -79.3788)
+			const centerLat = 43.6577;
+			const centerLon = -79.3788;
+			const delta = 0.009; // ~1km in degrees (approx)
+			const south = centerLat - delta;
+			const north = centerLat + delta;
+			const west = centerLon - delta;
+			const east = centerLon + delta;
+			const bbox = [south, west, north, east];
+			const query = `
+    [out:json][timeout:25];
+    (
+      way["highway"](${bbox.join(",")});
+    );
+    (._;>;);
+    out body;
+  `;
+			const url = "https://overpass-api.de/api/interpreter";
+			const response = await fetch(url, {
+				method: "POST",
+				body: query,
+				headers: { "Content-Type": "text/plain" }
+			});
+			const data = await response.json();
+
+			// Build a graph: nodes by id, ways as edges
+			const nodes = {};
+			for (const el of data.elements) {
+				if (el.type === "node") {
+					nodes[el.id] = { lat: el.lat, lon: el.lon };
+				}
+			}
+			const lineFeatures = [];
+			for (const el of data.elements) {
+				if (el.type === "way" && el.nodes) {
+					const coords = el.nodes.map(id => [nodes[id].lon, nodes[id].lat]);
+					lineFeatures.push({
+						type: "Feature",
+						geometry: { type: "LineString", coordinates: coords },
+						properties: {}
+					});
+				}
+			}
+			const geojson = { type: "FeatureCollection", features: lineFeatures };
+			highwayGeojson = geojson;
+			if (highwayGraphVisible) {
+				if (map.getSource('highways')) {
+					map.getSource('highways').setData(geojson);
+				} else {
+					map.addSource('highways', { type: 'geojson', data: geojson });
+					map.addLayer({
+						id: 'highways',
+						type: 'line',
+						source: 'highways',
+						layout: { 'line-join': 'round', 'line-cap': 'round' },
+						paint: { 'line-color': '#ff6600', 'line-width': 2 }
+					});
+				}
+			} else {
+				if (map.getLayer('highways')) map.removeLayer('highways');
+				if (map.getSource('highways')) map.removeSource('highways');
+			}
+			console.log("Highway graph for Toronto:", geojson);
+		}
+
+		function toggleHighwayGraph() {
+			highwayGraphVisible = !highwayGraphVisible;
+			if (highwayGraphVisible && highwayGeojson) {
+				if (!map.getSource('highways')) {
+					map.addSource('highways', { type: 'geojson', data: highwayGeojson });
+					map.addLayer({
+						id: 'highways',
+						type: 'line',
+						source: 'highways',
+						layout: { 'line-join': 'round', 'line-cap': 'round' },
+						paint: { 'line-color': '#ff6600', 'line-width': 2 }
+					});
+				}
+			} else {
+				if (map.getLayer('highways')) map.removeLayer('highways');
+				if (map.getSource('highways')) map.removeSource('highways');
+			}
+		}
+
+		document.getElementById('toggle-graph').addEventListener('click', () => {
+			toggleHighwayGraph();
+		});
+
+		// Fetch the graph but don't show it by default
+		map.on('load', () => {
+			highwayGraphVisible = false;
+			fetchHighwayGraph();
+		});
+		// Call the function after the map has loaded
+		map.on('load', fetchHighwayGraph);
 	</script>
 </body>
 
