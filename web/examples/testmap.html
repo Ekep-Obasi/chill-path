@@ -442,7 +442,7 @@
                   "line-cap": "round",
                 },
                 paint: {
-                  "line-color": "#ff0000",
+                  "line-color": "#e400ff",
                   "line-width": 5,
                   "line-opacity": 0.8,
                 },
@@ -700,16 +700,16 @@
       document.getElementById("find-shadiest-path").onclick = findAndRenderShadyPath;
 
       // Debug: click to check if point is shaded
-      map.on("click", function (e) {
-        const lngLat = [e.lngLat.lng, e.lngLat.lat];
-        const shaded = isPointShaded(lngLat, lastShadowPolygons);
-        alert(
-          `Clicked at ${lngLat[0].toFixed(6)}, ${lngLat[1].toFixed(
-            6
-          )}\nShaded: ${shaded ? "YES" : "NO"}`
-        );
-        console.log(`[Shade Debug] Clicked at ${lngLat}. Shaded: ${shaded}`);
-      });
+      // map.on("click", function (e) {
+      //   const lngLat = [e.lngLat.lng, e.lngLat.lat];
+      //   const shaded = isPointShaded(lngLat, lastShadowPolygons);
+      //   alert(
+      //     `Clicked at ${lngLat[0].toFixed(6)}, ${lngLat[1].toFixed(
+      //       6
+      //     )}\nShaded: ${shaded ? "YES" : "NO"}`
+      //   );
+      //   console.log(`[Shade Debug] Clicked at ${lngLat}. Shaded: ${shaded}`);
+      // });
 
       // Remove default Mapbox POI and place labels for a cleaner map
       map.on('style.load', function() {
@@ -736,6 +736,142 @@
       } else {
         console.warn("[Geolocation] Not supported by this browser.");
       }
+
+      // Fetch and plot fountains within 2km of TMU
+      async function fetchAndLogFountains() {
+        try {
+          const res = await fetch('https://6005-141-117-117-45.ngrok-free.app/fountains', {
+            headers: {
+              'ngrok-skip-browser-warning': 'true'
+            }
+          });
+          if (!res.ok) throw new Error("Fountains API error");
+          const data = await res.json();
+          console.log("[Fountains API] Response:", data);
+          // TMU center
+          const tmuCenter = [-79.3788, 43.6577];
+          // Helper: Haversine distance in meters
+          function haversine(lon1, lat1, lon2, lat2) {
+            const R = 6371000;
+            const toRad = x => x * Math.PI / 180;
+            const dLat = toRad(lat2 - lat1);
+            const dLon = toRad(lon2 - lon1);
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+          }
+          // Plot fountains within 2km
+          data.forEach(fountain => {
+            const lon = fountain.longitude || fountain.lon || fountain.lng;
+            const lat = fountain.latitude || fountain.lat;
+            if (typeof lon !== 'number' || typeof lat !== 'number') return;
+            const dist = haversine(tmuCenter[0], tmuCenter[1], lon, lat);
+            if (dist <= 2000) {
+              let popupText = 'Fountain';
+              if (fountain.type) {
+                popupText += `\nType: ${fountain.type}`;
+              }
+              new mapboxgl.Marker({ color: '#00bfff' })
+                .setLngLat([lon, lat])
+                .setPopup(new mapboxgl.Popup().setText(popupText))
+                .addTo(map);
+            }
+          });
+        } catch (e) {
+          console.error("[Fountains API] Failed to fetch:", e);
+        }
+      }
+      // Call on load
+      fetchAndLogFountains();
+
+      // Fetch and plot benches within 2km of TMU
+      async function fetchAndPlotBenches() {
+        try {
+          const res = await fetch('https://6005-141-117-117-45.ngrok-free.app/benches', {
+            headers: {
+              'ngrok-skip-browser-warning': 'true'
+            }
+          });
+          if (!res.ok) throw new Error("Benches API error");
+          const data = await res.json();
+          console.log("[Benches API] Response:", data);
+          // TMU center
+          const tmuCenter = [-79.3788, 43.6577];
+          // Helper: Haversine distance in meters
+          function haversine(lon1, lat1, lon2, lat2) {
+            const R = 6371000;
+            const toRad = x => x * Math.PI / 180;
+            const dLat = toRad(lat2 - lat1);
+            const dLon = toRad(lon2 - lon1);
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+          }
+          // Plot benches within 2km
+          data.forEach(bench => {
+            const lon = bench.longitude || bench.lon || bench.lng;
+            const lat = bench.latitude || bench.lat;
+            if (typeof lon !== 'number' || typeof lat !== 'number') return;
+            const dist = haversine(tmuCenter[0], tmuCenter[1], lon, lat);
+            if (dist <= 2000) {
+              new mapboxgl.Marker({ color: '#964B00' }) // brown for benches
+                .setLngLat([lon, lat])
+                .setPopup(new mapboxgl.Popup().setText('Bench'))
+                .addTo(map);
+            }
+          });
+        } catch (e) {
+          console.error("[Benches API] Failed to fetch:", e);
+        }
+      }
+      // Call on load
+      fetchAndPlotBenches();
+
+      // Fetch and plot washrooms within 2km of TMU
+      async function fetchAndPlotWashrooms() {
+        try {
+          const res = await fetch('https://6005-141-117-117-45.ngrok-free.app/washrooms', {
+            headers: {
+              'ngrok-skip-browser-warning': 'true'
+            }
+          });
+          if (!res.ok) throw new Error("Washrooms API error");
+          const data = await res.json();
+          console.log("[Washrooms API] Response:", data);
+          // TMU center
+          const tmuCenter = [-79.3788, 43.6577];
+          // Helper: Haversine distance in meters
+          function haversine(lon1, lat1, lon2, lat2) {
+            const R = 6371000;
+            const toRad = x => x * Math.PI / 180;
+            const dLat = toRad(lat2 - lat1);
+            const dLon = toRad(lon2 - lon1);
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+          }
+          // Plot washrooms within 2km
+          data.forEach(washroom => {
+            const lon = washroom.longitude || washroom.lon || washroom.lng;
+            const lat = washroom.latitude || washroom.lat;
+            if (typeof lon !== 'number' || typeof lat !== 'number') return;
+            const dist = haversine(tmuCenter[0], tmuCenter[1], lon, lat);
+            if (dist <= 2000) {
+              new mapboxgl.Marker({ color: '#228B22' }) // green for washrooms
+                .setLngLat([lon, lat])
+                .setPopup(new mapboxgl.Popup().setText('Washroom'))
+                .addTo(map);
+            }
+          });
+        } catch (e) {
+          console.error("[Washrooms API] Failed to fetch:", e);
+        }
+      }
+      // Call on load
+      fetchAndPlotWashrooms();
     </script>
   </body>
 </html>
