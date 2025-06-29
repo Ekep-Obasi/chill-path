@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manual Shade Map Example</title>
+  <link href='https://api.mapbox.com/mapbox-gl-js/v2.8.2/mapbox-gl.css' rel='stylesheet' />
+  <script src='https://api.mapbox.com/mapbox-gl-js/v2.8.2/mapbox-gl.js'></script>
+  <script src='https://www.unpkg.com/suncalc@1.9.0/suncalc.js'></script>
+  <script src='https://cdn.jsdelivr.net/npm/@turf/turf@6.5.0/turf.min.js'></script>
+  <style>
+    body { margin: 0; padding: 0; }
+    #map { width: 100vw; height: 100vh; }
+  </style>
+</head>
+<body>
+<div style="position:absolute;z-index:1;top:10px;left:10px;background:white;padding:8px;border-radius:4px;box-shadow:0 2px 8px #0002;">
+  <label for="sun-time">Sun time:</label>
+  <input type="time" id="sun-time" value="12:00">
+  <button id="update-shadows">Update Shadows</button>
+</div>
+<div id="map"></div>
+<script>
+const MAPBOX_API_KEY = "pk.eyJ1IjoiYXpyYWZhbG1hcyIsImEiOiJjbWNnaXhkNjMwbGNqMmpwdGlndXZ2ZnVtIn0.mTHFqXv1Ao_h2QptWhtmlg";
+mapboxgl.accessToken = MAPBOX_API_KEY;
+const map = new mapboxgl.Map({
+  container: 'map',
+  style: 'mapbox://styles/mapbox/streets-v11',
+  center: [-79.3788, 43.6577],
+  zoom: 16
+});
+
+// --- SHADE SYSTEM UTILS ---
+function getBuildingHeight(tags) {
+  if (tags && tags.height) return parseFloat(tags.height);
+  if (tags && tags['building:levels']) return parseFloat(tags['building:levels']) * 3;
+  return 10;
+}
+function getBuildingShadowPolygon(footprint, height, sunAzimuth, sunAltitude) {
+  if (sunAltitude <= 0) return null;
+  const shadowLength = height / Math.tan(sunAltitude);
+  const shadowAzimuthDeg = (sunAzimuth * 180 / Math.PI) - 180;
+  const shadowed = footprint.map(([lng, lat]) => {
+    const pt = turf.point([lng, lat]);
+    const dest = turf.destination(pt, shadowLength, shadowAzimuthDeg, { units: 'meters' });
+    return dest.geometry.coordinates;
+  });
+  // Build the ring: original footprint, shadowed (reversed), and close the ring
+  const ring = [
+    ...footprint,
+    ...shadowed.reverse()
+  ];
+  // Ensure the ring is closed
+  if (ring.length && (ring[0][0] !== ring[ring.length-1][0] || ring[0][1] !== ring[ring.length-1][1])) {
+    ring.push(ring[0]);
+  }
+  return turf.polygon([ring]);
+}
+function getBuildingShadows(buildings, sunPos) {
+  return buildings.map(bld => {
+    const height = getBuildingHeight(bld.tags);
+    return getBuildingShadowPolygon(bld.footprint, height, sunPos.azimuth, sunPos.altitude);
+  }).filter(Boolean);
+}
+function isPointShaded(coord, shadowPolygons) {
+  const pt = turf.point(coord);
+  return shadowPolygons.some(poly => turf.booleanPointInPolygon(pt, poly));
+}
+function getShadePenalty(fromCoord, toCoord, shadowPolygons, samples = 5) {
+  const line = turf.lineString([fromCoord, toCoord]);
+  let shaded = 0;
+  for (let i = 0; i <= samples; i++) {
+    const pt = turf.along(line, (turf.length(line) * i) / samples);
+    if (isPointShaded(pt.geometry.coordinates, shadowPolygons)) shaded++;
+  }
+  const ratio = shaded / (samples + 1);
+  return 1 + (1.5 * (1 - ratio));
+}
+// --- END SHADE SYSTEM UTILS ---
+
+// Helper: get sun azimuth and altitude for now
+function getSunPosition(lat, lng, date = new Date()) {
+  const pos = SunCalc.getPosition(date, lat, lng);
+  return { azimuth: pos.azimuth, altitude: pos.altitude };
+}
+
+let buildingsCache = null;
+let mapLoaded = false;
+let lastShadowPolygons = [];
+
+async function renderShadowsForTime(timeStr) {
+  // Toronto Metropolitan University center
+  const center = { lng: -79.3788, lat: 43.6577 };
+  // Use today's date with selected time (local Toronto time, no UTC math)
+  const today = new Date();
+  const [hh, mm] = timeStr.split(":");
+  const date = new Date(today.getFullYear(), today.getMonth(), today.getDate(), parseInt(hh), parseInt(mm));
+  const sun = getSunPosition(center.lat, center.lng, date);
+  console.log('[Shade Debug] Sun position:', sun);
+  if (sun.altitude <= 0) {
+    console.warn('[Shade Debug] Sun is below the horizon, no shadows will be rendered. Try changing the time.');
+  }
+  // For each building, project shadow polygon
+  const shadowFeatures = [];
+  lastShadowPolygons = [];
+  for (const bld of buildingsCache) {
+    // Use getBuildingShadowPolygon for both rendering and debug
+    const height = getBuildingHeight(bld.tags || {});
+    const turfPoly = getBuildingShadowPolygon(bld.footprint, height, sun.azimuth, sun.altitude);
+    if (turfPoly) {
+      shadowFeatures.push({
+        type: 'Feature',
+        geometry: { type: 'Polygon', coordinates: turfPoly.geometry.coordinates },
+        properties: {}
+      });
+      lastShadowPolygons.push(turfPoly);
+    }
+  }
+  // Update or add shadow polygons to map
+  if (map.getSource('shadows')) {
+    map.getSource('shadows').setData({ type: 'FeatureCollection', features: shadowFeatures });
+  } else {
+    map.addSource('shadows', {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: shadowFeatures }
+    });
+    map.addLayer({
+      id: 'shadows',
+      type: 'fill',
+      source: 'shadows',
+      paint: {
+        'fill-color': 'yellow',
+        'fill-opacity': 1
+      }
+    });
+  }
+}
+
+// Fetch building footprints from OSM Overpass API
+async function fetchBuildings(bbox) {
+  // Use Overpass API for demo (GeoJSON)
+  const [west, south, east, north] = bbox;
+  const query = `
+    [out:json][timeout:25];
+    (
+      way["building"](${south},${west},${north},${east});
+    );
+    (._;>;);
+    out body;
+  `;
+  const url = "https://overpass-api.de/api/interpreter";
+  const response = await fetch(url, {
+    method: "POST",
+    body: query,
+    headers: { "Content-Type": "text/plain" }
+  });
+  const data = await response.json();
+  // Convert OSM ways to GeoJSON polygons
+  const nodes = {};
+  for (const el of data.elements) {
+    if (el.type === "node") nodes[el.id] = [el.lon, el.lat];
+  }
+  const buildings = [];
+  for (const el of data.elements) {
+    if (el.type === "way" && el.nodes && el.nodes.length > 2) {
+      const coords = el.nodes.map(id => nodes[id]).filter(Boolean);
+      if (coords.length === el.nodes.length) {
+        buildings.push({
+          footprint: coords,
+          tags: el.tags || {}
+        });
+      }
+    }
+  }
+  return buildings;
+}
+
+map.on('load', async () => {
+  mapLoaded = true;
+  // Toronto Metropolitan University center
+  const center = { lng: -79.3788, lat: 43.6577 };
+  // 500m bounding box
+  const delta = 0.0045; // ~500m in degrees
+  const bbox = [center.lng - delta, center.lat - delta, center.lng + delta, center.lat + delta];
+  console.log('[Shade Debug] Using bbox:', bbox);
+  // Fetch buildings in 500m area
+  buildingsCache = await fetchBuildings(bbox);
+  console.log(`[Shade Debug] Fetched ${buildingsCache.length} buildings`);
+  // Initial render at noon
+  renderShadowsForTime('12:00');
+});
+
+document.getElementById('update-shadows').onclick = function() {
+  const timeStr = document.getElementById('sun-time').value;
+  if (mapLoaded && buildingsCache) {
+    renderShadowsForTime(timeStr);
+  }
+};
+
+// Debug: click to check if point is shaded
+map.on('click', function(e) {
+  const lngLat = [e.lngLat.lng, e.lngLat.lat];
+  const shaded = isPointShaded(lngLat, lastShadowPolygons);
+  alert(`Clicked at ${lngLat[0].toFixed(6)}, ${lngLat[1].toFixed(6)}\nShaded: ${shaded ? 'YES' : 'NO'}`);
+  console.log(`[Shade Debug] Clicked at ${lngLat}. Shaded: ${shaded}`);
+});
+</script>
+</body>
+</html>
