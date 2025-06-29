@@ -20,63 +20,52 @@ def calculate_water_recommendation(time_in_seconds):
         return round(recommended_water_liters * 2) / 2 
     
 
-# TEST REMOVE LATER
-@app.route('/api/mock-partner-distance-time', methods=['GET'])
-def get_mock_distance_time():
-    # You can optionally use path_id here if you want to return different data based on it
-    # path_id = request.args.get('pathId')
-
-    # Hardcoded values for testing
-    hardcoded_distance = 5000  # meters (e.g., 5 km)
-    hardcoded_time = 3600      # seconds (e.g., 1 hour)
-
-    return jsonify({
-        "distance_meters": hardcoded_distance,
-        "time_seconds": hardcoded_time
-    }), 200 # Return 200 OK status
-#remove later
-
-@app.route('/api/get-chill-path-recommendation', methods=['GET'])
+@app.route('/api/get-chill-path-recommendation', methods=['POST'])
 def get_chill_path_recommendation():
-    path_id = request.args.get('pathId') # Get path ID from your frontend
+    data = request.get_json()
 
-    if not path_id:
-        return jsonify({"error": "pathId is required"}), 400
+    # Validate incoming JSON
+    start = data.get('start')
+    end = data.get('end')
+    mode = data.get('mode', 'walking')  # default to walking if not given
 
-    # 1. Call Partner's Backend (NOW CALLING YOUR MOCK BACKEND)
-    # Set the URL to your own local mock endpoint
-    # Ensure this URL matches where your Flask app is running (default is localhost:5000)
-    partner_api_url = f"http://127.0.0.1:5001/api/mock-partner-distance-time?pathId={path_id}" # Using 127.0.0.1 or localhost
+    if not start or not end:
+        return jsonify({"error": "start and end coordinates are required"}), 400
+
+    # Send POST request to Express backend
+    express_api_url = "http://127.0.0.1:3000/distance_only"  # Adjust port if needed
 
     try:
-        partner_response = requests.get(partner_api_url)
-        partner_response.raise_for_status()
-        partner_data = partner_response.json()
+        express_response = requests.post(express_api_url, json={
+            "start": start,
+            "end": end,
+            "mode": mode
+        })
+        express_response.raise_for_status()
+        express_data = express_response.json()
 
-        distance_meters = partner_data.get("distance_meters")
-        time_seconds = partner_data.get("time_seconds")
+        distance = express_data.get("distance")
+        duration = express_data.get("duration")  # in seconds
 
-        if distance_meters is None or time_seconds is None:
-            # This error might now indicate an issue with your mock backend's response format
-            return jsonify({"error": "Could not retrieve distance or time from partner (mock) backend"}), 500
+        if distance is None or duration is None:
+            return jsonify({"error": "Invalid response from Express backend"}), 500
 
-        # 2. Apply Hydration Logic
-        recommended_water = calculate_water_recommendation(time_seconds)
+        # Calculate recommended water
+        recommended_water = calculate_water_recommendation(duration)
 
-        # 3. Return to Frontend
         return jsonify({
-            "pathId": path_id,
-            "distance_meters": distance_meters,
-            "time_seconds": time_seconds,
+            "start": start,
+            "end": end,
+            "distance_meters": distance,
+            "time_seconds": duration,
             "recommended_water_liters": recommended_water,
             "message": "Remember to refill at water stops and listen to your body!"
         })
 
     except requests.exceptions.RequestException as e:
-        return jsonify({"error": f"Failed to connect to partner (mock) backend: {e}"}), 500
+        return jsonify({"error": f"Failed to connect to Express backend: {e}"}), 500
     except Exception as e:
         return jsonify({"error": f"An internal server error occurred: {e}"}), 500
-
 
 
 if __name__ == '__main__':

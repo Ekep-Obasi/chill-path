@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Hydration Recommendation Tester</title>
+</head>
+<body>
+  <h2>Test Walk Recommendation</h2>
+
+  <label for="start">Start Coordinates (lng, lat):</label><br>
+  <input id="start" type="text" value="-79.3832,43.6532"><br><br>
+
+  <label for="end">End Coordinates (lng, lat):</label><br>
+  <input id="end" type="text" value="-79.3802,43.6510"><br><br>
+
+  <label for="mode">Travel Mode:</label><br>
+  <select id="mode">
+    <option value="walking" selected>Walking</option>
+    <option value="cycling">Cycling</option>
+    <option value="driving">Driving</option>
+  </select><br><br>
+
+  <button onclick="sendRequest()">Get Recommendation</button>
+
+  <h3>Response:</h3>
+  <pre id="responseArea">Waiting for input...</pre>
+
+  <script>
+    async function sendRequest() {
+      const start = document.getElementById("start").value.split(",").map(Number);
+      const end = document.getElementById("end").value.split(",").map(Number);
+      const mode = document.getElementById("mode").value;
+
+      const body = {
+        start: start,
+        end: end,
+        mode: mode
+      };
+
+      try {
+        const res = await fetch("http://localhost:5001/api/get-chill-path-recommendation", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(body)
+        });
+
+        const data = await res.json();
+        document.getElementById("responseArea").textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        document.getElementById("responseArea").textContent = "Error: " + err;
+      }
+    }
+  </script>
+</body>
+</html>
