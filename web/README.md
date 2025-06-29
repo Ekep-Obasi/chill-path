@@ -25,38 +25,43 @@ Using npm:
 In a browser:
 
 ```html
-<script src='https://api.mapbox.com/mapbox-gl-js/v2.8.2/mapbox-gl.js'></script>
-<link href='https://api.mapbox.com/mapbox-gl-js/v2.8.2/mapbox-gl.css' rel='stylesheet' />
+<script src="https://api.mapbox.com/mapbox-gl-js/v2.8.2/mapbox-gl.js"></script>
+<link
+  href="https://api.mapbox.com/mapbox-gl-js/v2.8.2/mapbox-gl.css"
+  rel="stylesheet"
+/>
 <script src="https://unpkg.com/mapbox-gl-shadow-simulator/dist/mapbox-gl-shadow-simulator.umd.min.js"></script>
 <script>
   const map = new mapboxgl.Map({
     // mapboxgl Map options
-    // ... 
+    // ...
   });
 
-  map.on('load', () => {
+  map.on("load", () => {
     const shadeMap = new ShadeMap({
-      date: new Date(),    // display shadows for current date
-      color: '#01112f',    // shade color
-      opacity: 0.7,        // opacity of shade color
-      apiKey: "XXXXXX",    // obtain from https://shademap.app/about/
+      date: new Date(), // display shadows for current date
+      color: "#01112f", // shade color
+      opacity: 0.7, // opacity of shade color
+      apiKey: "XXXXXX", // obtain from https://shademap.app/about/
       terrainSource: {
-        tileSize: 256,       // DEM tile size
-        maxZoom: 15,         // Maximum zoom of DEM tile set
+        tileSize: 256, // DEM tile size
+        maxZoom: 15, // Maximum zoom of DEM tile set
         getSourceUrl: ({ x, y, z }) => {
           // return DEM tile url for given x,y,z coordinates
-          return `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${x}/${y}.png`
+          return `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${x}/${y}.png`;
         },
         getElevation: ({ r, g, b, a }) => {
           // return elevation in meters for a given DEM tile pixel
-          return (r * 256 + g + b / 256) - 32768
-        }
+          return r * 256 + g + b / 256 - 32768;
+        },
       },
-      debug: (msg) => { console.log(new Date().toISOString(), msg) },
+      debug: (msg) => {
+        console.log(new Date().toISOString(), msg);
+      },
     }).addTo(map);
 
     // advance shade by 1 hour
-    shadeMap.setDate(new Date(Date.now() + 1000 * 60 * 60)); 
+    shadeMap.setDate(new Date(Date.now() + 1000 * 60 * 60));
 
     // sometime later...
     // ...remove layer
@@ -68,37 +73,39 @@ In a browser:
 Using Node.js:
 
 ```javascript
-import mapboxgl from 'mapbox-gl/dist/mapbox-gl';
-import ShadeMap from 'mapbox-gl-shadow-simulator';
+import mapboxgl from "mapbox-gl/dist/mapbox-gl";
+import ShadeMap from "mapbox-gl-shadow-simulator";
 
 const map = new mapboxgl.Map({
   // mapboxgl Map options
-  // ... 
+  // ...
 });
 
-map.on('load', () => {
+map.on("load", () => {
   const shadeMap = new ShadeMap({
-    date: new Date(),    // display shadows for current date
-    color: '#01112f',    // shade color
-    opacity: 0.7,        // opacity of shade color
-    apiKey: "XXXXXX",    // obtain from https://shademap.app/about/
+    date: new Date(), // display shadows for current date
+    color: "#01112f", // shade color
+    opacity: 0.7, // opacity of shade color
+    apiKey: "XXXXXX", // obtain from https://shademap.app/about/
     terrainSource: {
-      tileSize: 256,       // DEM tile size
-      maxZoom: 15,         // Maximum zoom of DEM tile set
+      tileSize: 256, // DEM tile size
+      maxZoom: 15, // Maximum zoom of DEM tile set
       getSourceUrl: ({ x, y, z }) => {
         // return DEM tile url for given x,y,z coordinates
-        return `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${x}/${y}.png`
+        return `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${x}/${y}.png`;
       },
       getElevation: ({ r, g, b, a }) => {
         // return elevation in meters for a given DEM tile pixel
-        return (r * 256 + g + b / 256) - 32768
-      }
+        return r * 256 + g + b / 256 - 32768;
+      },
     },
-    debug: (msg) => { console.log(new Date().toISOString(), msg) },
+    debug: (msg) => {
+      console.log(new Date().toISOString(), msg);
+    },
   }).addTo(map);
 
   // advance shade by 1 hour
-  shadeMap.setDate(new Date(Date.now() + 1000 * 60 * 60)); 
+  shadeMap.setDate(new Date(Date.now() + 1000 * 60 * 60));
 
   // sometime later
   // ...remove layer
@@ -108,26 +115,26 @@ map.on('load', () => {
 
 ### Constructor options
 
-Property name | Type | Default value | Comment
-:--- | :--- | :--- | :---
-`apiKey` | `String` | `''` | See [https://shademap.app/about/](https://shademap.app/about/)
-`date` | `Date` | `new Date()` | Sun's position in the sky is based on this date
-`color` | `String` | `#000` | 3 or 6 digit hexadecimal number
-`opacity` | `Number` | `0.3`
-`sunExposure` | `Object` | See [sunExposure](#sunExposure) | Display sun exposure for provided date range 
-`terrainSource` | `Object` | See [terrainSource](#terrainsource) | Specify DEM or DSM tiles containing terrain elevation data
-`getFeatures` | `Function` | See [getFeatures](#getfeatures) | Returns GeoJSON of objects, such as buildings, to display on the map
+| Property name   | Type       | Default value                       | Comment                                                              |
+| :-------------- | :--------- | :---------------------------------- | :------------------------------------------------------------------- |
+| `apiKey`        | `String`   | `''`                                | See [https://shademap.app/about/](https://shademap.app/about/)       |
+| `date`          | `Date`     | `new Date()`                        | Sun's position in the sky is based on this date                      |
+| `color`         | `String`   | `#000`                              | 3 or 6 digit hexadecimal number                                      |
+| `opacity`       | `Number`   | `0.3`                               |
+| `sunExposure`   | `Object`   | See [sunExposure](#sunExposure)     | Display sun exposure for provided date range                         |
+| `terrainSource` | `Object`   | See [terrainSource](#terrainsource) | Specify DEM or DSM tiles containing terrain elevation data           |
+| `getFeatures`   | `Function` | See [getFeatures](#getfeatures)     | Returns GeoJSON of objects, such as buildings, to display on the map |
 
 #### terrainSource
 
 An object describing a DEM tile set to use for terrain shadows
 
-Property name | Type | Default value | Comment
-:--- | :--- | :--- | :---
-`maxZoom` | `Number` | `15` | Max zoom for custom DEM tile source
-`tileSize` | `Number` | `256` | Tile size for custom DEM tile source
-`sourceUrl` | `Function` | `Returns tile encoding 0m elevation for all locations` | Returns url of DEM tile for given `(x, y, z)` coordinate
-`getElevation` | `Function` | `return (r * 256 + g + b / 256) - 32768` | Returns elevation in meters for each (r,g,b,a) pixel of DEM tile
+| Property name  | Type       | Default value                                          | Comment                                                          |
+| :------------- | :--------- | :----------------------------------------------------- | :--------------------------------------------------------------- |
+| `maxZoom`      | `Number`   | `15`                                                   | Max zoom for custom DEM tile source                              |
+| `tileSize`     | `Number`   | `256`                                                  | Tile size for custom DEM tile source                             |
+| `sourceUrl`    | `Function` | `Returns tile encoding 0m elevation for all locations` | Returns url of DEM tile for given `(x, y, z)` coordinate         |
+| `getElevation` | `Function` | `return (r * 256 + g + b / 256) - 32768`               | Returns elevation in meters for each (r,g,b,a) pixel of DEM tile |
 
 #### sunExposure
 
@@ -138,7 +145,6 @@ Property name | Type | Default value | Comment
 `startDate` | `Date` | `new Date()` | Start date of sun exposure time interval
 `endDate` | `Date` | `new Date()` | End date of sun exposure time interval
 `iterations` | `number` | `32` | Number of discrete chunks to calculate shadows for between startDate and endDate. A larger number will provide more detail but take longer to compute.
-
 
 ##### Open Data on AWS for terrainSource
 
@@ -159,7 +165,7 @@ A global dataset providing bare-earth terrain heights, tiled for easy usage and 
 
 ##### Mapbox Terrain DEM V1 for terrainSource
 
-Mapbox Terrain-DEM v1 is a Mapbox-provided raster tileset is a global elevation layer. This tileset contains raw height values in meters in the Red, Green, and Blue channels of PNG tiles that can be decoded to raw heights in meters - [More info](https://docs.mapbox.com/data/tilesets/reference/mapbox-terrain-dem-v1/) 
+Mapbox Terrain-DEM v1 is a Mapbox-provided raster tileset is a global elevation layer. This tileset contains raw height values in meters in the Red, Green, and Blue channels of PNG tiles that can be decoded to raw heights in meters - [More info](https://docs.mapbox.com/data/tilesets/reference/mapbox-terrain-dem-v1/)
 
 ```javascript
 {

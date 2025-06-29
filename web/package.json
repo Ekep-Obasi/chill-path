@@ -9,24 +9,6 @@
   "scripts": {
     "start": "npx serve ."
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/ted-piotrowski/mapbox-gl-shadow-simulator.git"
-  },
-  "keywords": [
-    "mapbox",
-    "mapbox-gl",
-    "maplibre",
-    "maplibre-gl",
-    "shade",
-    "layer"
-  ],
-  "author": "Ted Piotrowski",
-  "license": "UNLICENSED",
-  "bugs": {
-    "url": "https://github.com/ted-piotrowski/mapbox-gl-shadow-simulator/issues"
-  },
-  "homepage": "https://github.com/ted-piotrowski/mapbox-gl-shadow-simulator#readme",
   "dependencies": {
     "mapbox-gl-shadow-simulator": "^0.60.0",
     "suncalc": "^1.9.0"

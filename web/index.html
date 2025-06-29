@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Shade Navigation Tool</title>
+
+    <!-- External CSS -->
+    <link
+      href="https://api.mapbox.com/mapbox-gl-js/v2.8.2/mapbox-gl.css"
+      rel="stylesheet"
+    />
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="./src/styles/main.css" />
+
+    <!-- External JavaScript Libraries -->
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.8.2/mapbox-gl.js"></script>
+    <script src="https://www.unpkg.com/suncalc@1.9.0/suncalc.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6.5.0/turf.min.js"></script>
+    <script src="lib/mapbox-gl-shadow-simulator.umd.min.js"></script>
+  </head>
+  <body>
+    <div class="control-panel">
+      <div class="panel-header">Shade Navigation Tool</div>
+
+      <div class="panel-section">
+        <div class="section-title">Sun Position</div>
+        <label for="sun-time">Set time of day:</label>
+        <input type="time" id="sun-time" value="12:00" />
+        <button id="update-shadows" class="btn btn-full">
+          Update Sun Position
+        </button>
+      </div>
+
+      <div class="panel-section">
+        <div class="section-title">Route Planning</div>
+        <label for="route-start-search">Start location:</label>
+        <div class="autocomplete-container">
+          <input
+            id="route-start-search"
+            class="autocomplete-input"
+            type="text"
+            placeholder="Enter starting location..."
+            aria-label="Starting location"
+            aria-autocomplete="list"
+            aria-expanded="false"
+            role="combobox"
+            autocomplete="off"
+          />
+          <div
+            id="start-suggestions"
+            class="autocomplete-suggestions"
+            role="listbox"
+            aria-label="Location suggestions"
+          ></div>
+          <div id="start-validation" class="validation-message"></div>
+        </div>
+
+        <label for="route-end-search">Destination:</label>
+        <div class="autocomplete-container">
+          <input
+            id="route-end-search"
+            class="autocomplete-input"
+            type="text"
+            placeholder="Enter destination..."
+            aria-label="Destination location"
+            aria-autocomplete="list"
+            aria-expanded="false"
+            role="combobox"
+            autocomplete="off"
+          />
+          <div
+            id="end-suggestions"
+            class="autocomplete-suggestions"
+            role="listbox"
+            aria-label="Location suggestions"
+          ></div>
+          <div id="end-validation" class="validation-message"></div>
+        </div>
+
+        <div class="btn-group">
+          <button id="get-route" class="btn">Get Standard Route</button>
+          <button id="find-shadiest-path" class="btn btn-secondary">
+            Find Shady Route
+          </button>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <div class="section-title">Advanced Options</div>
+        <button id="show-highways" class="btn btn-secondary btn-full">
+          Show Road Network
+        </button>
+        <div class="info-box">
+          Click anywhere on the map to check if a location is in shade.
+        </div>
+      </div>
+    </div>
+
+    <div id="map"></div>
+
+    <!-- Application JavaScript -->
+    <script src="./src/js/config.js"></script>
+    <script src="./src/js/utils.js"></script>
+    <script src="./src/js/mapManager.js"></script>
+    <script src="./src/js/autocomplete.js"></script>
+    <script src="./src/js/shadeSystem.js"></script>
+    <script src="./src/js/routing.js"></script>
+    <script src="./src/js/poiManager.js"></script>
+    <script src="./src/js/geolocation.js"></script>
+    <script src="./src/js/main.js"></script>
+  </body>
+</html>
