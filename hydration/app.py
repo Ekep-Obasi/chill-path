@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
-import requests # To make HTTP requests to your partner's backend
-from flask_cors import CORS # Import CORS
+import requests 
+from flask_cors import CORS 
 
 
 app = Flask(__name__)
@@ -33,7 +33,7 @@ def get_chill_path_recommendation():
         return jsonify({"error": "start and end coordinates are required"}), 400
 
     # Send POST request to Express backend
-    express_api_url = "http://127.0.0.1:3000/distance_only"  # Adjust port if needed
+    express_api_url = "http://127.0.0.1:3000/distance_only"  # Adjust port to localhost when tmr localhost 
 
     try:
         express_response = requests.post(express_api_url, json={
@@ -45,7 +45,7 @@ def get_chill_path_recommendation():
         express_data = express_response.json()
 
         distance = express_data.get("distance")
-        duration = express_data.get("duration")  # in seconds
+        duration = express_data.get("duration")  
 
         if distance is None or duration is None:
             return jsonify({"error": "Invalid response from Express backend"}), 500
@@ -53,7 +53,7 @@ def get_chill_path_recommendation():
         # Calculate recommended water
         recommended_water = calculate_water_recommendation(duration)
 
-        return jsonify({
+        return jsonify({ #MODIFY OUTPUT TO YOU LIKING
             "start": start,
             "end": end,
             "distance_meters": distance,
@@ -70,3 +70,4 @@ def get_chill_path_recommendation():
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001) 
+
