@@ -11,6 +11,7 @@
     <script src="https://api.mapbox.com/mapbox-gl-js/v2.8.2/mapbox-gl.js"></script>
     <script src="https://www.unpkg.com/suncalc@1.9.0/suncalc.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6.5.0/turf.min.js"></script>
+    <script src="../dist/mapbox-gl-shadow-simulator.umd.min.js"></script>
     <style>
       body {
         margin: 0;
@@ -68,6 +69,34 @@
           size="18" /></label
       ><br />
       <button id="get-route">Get Route</button>
+    </div>
+    <div
+      style="
+        position: absolute;
+        z-index: 3;
+        top: 170px;
+        left: 10px;
+        background: white;
+        padding: 8px;
+        border-radius: 4px;
+        box-shadow: 0 2px 8px #0002;
+      "
+    >
+      <button id="show-highways">Show Highway Graph</button>
+    </div>
+    <div
+      style="
+        position: absolute;
+        z-index: 4;
+        top: 230px;
+        left: 10px;
+        background: white;
+        padding: 8px;
+        border-radius: 4px;
+        box-shadow: 0 2px 8px #0002;
+      "
+    >
+      <button id="find-shadiest-path">Find Shadiest Path</button>
     </div>
     <div id="map"></div>
     <script>
@@ -161,6 +190,50 @@
       let buildingsCache = null;
       let mapLoaded = false;
       let lastShadowPolygons = [];
+      let shadeMap;
+      function getSelectedSunDate() {
+        const timeStr = document.getElementById("sun-time").value;
+        const today = new Date();
+        const [hh, mm] = timeStr.split(":");
+        return new Date(today.getFullYear(), today.getMonth(), today.getDate(), parseInt(hh), parseInt(mm));
+      }
+      map.on("style.load", () => {
+        // Toronto center
+        const center = { lng: -79.3788, lat: 43.6577 };
+        map.setCenter(center);
+        // Initialize ShadeMap with selected time
+        shadeMap = new ShadeMap({
+          apiKey: "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjFzYWtpYi51ZGRpbkBnbWFpbC5jb20iLCJjcmVhdGVkIjoxNzUxMTI5NjcyMTQ2LCJpYXQiOjE3NTExMjk2NzJ9.kE8qlYMd5W_J_p6rRgiwrcAHr9oHbN_ICx4nRzHyOFI",
+          date: getSelectedSunDate(),
+          color: "#888888", // grey shade
+          opacity: 1,
+          terrainSource: {
+            maxZoom: 15,
+            tileSize: 256,
+            getSourceUrl: ({ x, y, z }) => `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${x}/${y}.png`,
+            getElevation: ({ r, g, b, a }) => (r * 256 + g + b / 256) - 32768,
+            _overzoom: 18,
+          },
+          getFeatures: async () => {
+            await new Promise((res) => map.once("render", res));
+            const buildingData = map.querySourceFeatures('composite', { sourceLayer: 'building' }).filter((feature) => {
+              return feature.properties && feature.properties.underground !== "true" && (feature.properties.height || feature.properties.render_height)
+            });
+            return buildingData;
+          },
+          debug: (msg) => { console.log(new Date().toISOString(), msg) }
+        }).addTo(map);
+      });
+      // Update ShadeMap date when user changes sun time
+      document.getElementById("update-shadows").onclick = function () {
+        const timeStr = document.getElementById("sun-time").value;
+        if (mapLoaded && buildingsCache) {
+          renderShadowsForTime(timeStr);
+        }
+        if (shadeMap) {
+          shadeMap.setDate(getSelectedSunDate());
+        }
+      };
 
       async function renderShadowsForTime(timeStr) {
         // Toronto Metropolitan University center
@@ -206,7 +279,7 @@
             lastShadowPolygons.push(turfPoly);
           }
         }
-        // Update or add shadow polygons to map
+        // Update or add shadow polygons to map (invisible for user, used for shade calculations)
         if (map.getSource("shadows")) {
           map
             .getSource("shadows")
@@ -222,7 +295,7 @@
             source: "shadows",
             paint: {
               "fill-color": "yellow",
-              "fill-opacity": 1,
+              "fill-opacity": 0, // invisible but present for calculations
             },
           });
         }
@@ -286,13 +359,6 @@
         // Initial render at noon
         renderShadowsForTime("12:00");
       });
-
-      document.getElementById("update-shadows").onclick = function () {
-        const timeStr = document.getElementById("sun-time").value;
-        if (mapLoaded && buildingsCache) {
-          renderShadowsForTime(timeStr);
-        }
-      };
 
       // Returns true if [lng, lat] is in a shadow polygon
       function isLngLatShaded(lng, lat) {
@@ -400,6 +466,239 @@
       }
       document.getElementById("get-route").onclick = fetchAndRenderRoute;
 
+      // --- Highway Graph (500m around TMU) ---
+      async function fetchAndRenderHighwayGraph() {
+        // 500m bounding box around Toronto Metropolitan University
+        const centerLat = 43.6577;
+        const centerLon = -79.3788;
+        const delta = 0.0045; // ~500m in degrees
+        const south = centerLat - delta;
+        const north = centerLat + delta;
+        const west = centerLon - delta;
+        const east = centerLon + delta;
+        const bbox = [south, west, north, east];
+        const query = `
+    [out:json][timeout:25];
+    (
+      way["highway"](${bbox.join(",")});
+    );
+    (._;>;);
+    out body;
+  `;
+        const url = "https://overpass-api.de/api/interpreter";
+        const response = await fetch(url, {
+          method: "POST",
+          body: query,
+          headers: { "Content-Type": "text/plain" },
+        });
+        const data = await response.json();
+        // Build nodes and edges
+        const nodes = {};
+        for (const el of data.elements) {
+          if (el.type === "node") {
+            nodes[el.id] = { lat: el.lat, lon: el.lon };
+          }
+        }
+        const lineFeatures = [];
+        for (const el of data.elements) {
+          if (el.type === "way" && el.nodes) {
+            const coords = el.nodes.map((id) => [nodes[id].lon, nodes[id].lat]);
+            // Shade analysis: sample points along the line
+            let shaded = 0, total = 0;
+            const samples = Math.max(2, Math.floor(turf.length(turf.lineString(coords)) * 20));
+            for (let i = 0; i <= samples; i++) {
+              const pt = turf.along(turf.lineString(coords), (turf.length(turf.lineString(coords)) * i) / samples);
+              total++;
+              if (isPointShaded(pt.geometry.coordinates, lastShadowPolygons)) shaded++;
+            }
+            const shadeRatio = total > 0 ? shaded / total : 0;
+            // Lower weight for more shade, higher for less shade
+            const weight = 1 + 2 * (1 - shadeRatio);
+            lineFeatures.push({
+              type: "Feature",
+              geometry: { type: "LineString", coordinates: coords },
+              properties: { weight, shadeRatio },
+            });
+          }
+        }
+        const geojson = { type: "FeatureCollection", features: lineFeatures };
+        // Add or update the highways layer
+        if (map.getSource("highways")) {
+          map.getSource("highways").setData(geojson);
+        } else {
+          map.addSource("highways", { type: "geojson", data: geojson });
+          map.addLayer({
+            id: "highways",
+            type: "line",
+            source: "highways",
+            layout: { "line-join": "round", "line-cap": "round" },
+            paint: { "line-color": "#ff6600", "line-width": 2 },
+          });
+        }
+        console.log("[Highway Graph Debug] Updated with shade-based weights.", geojson);
+      }
+      document.getElementById("show-highways").onclick = fetchAndRenderHighwayGraph;
+
+      // --- Dijkstra's Algorithm for Shadiest Path ---
+      function getDistance(a, b) {
+        const dx = a[0] - b[0];
+        const dy = a[1] - b[1];
+        return Math.sqrt(dx * dx + dy * dy);
+      }
+      function findNearestNode(coord, nodeCoords) {
+        let minDist = Infinity, minId = null;
+        for (const [id, c] of Object.entries(nodeCoords)) {
+          const d = getDistance(coord, c);
+          if (d < minDist) {
+            minDist = d;
+            minId = id;
+          }
+        }
+        return minId;
+      }
+      function buildGraphFromHighways(features) {
+        const nodes = {};
+        const edges = {};
+        let nodeId = 0;
+        const coordToId = {};
+        // Assign unique IDs to all coordinates
+        for (const feat of features) {
+          const coords = feat.geometry.coordinates;
+          for (const c of coords) {
+            const key = c.join(",");
+            if (!(key in coordToId)) {
+              coordToId[key] = nodeId.toString();
+              nodes[nodeId.toString()] = c;
+              edges[nodeId.toString()] = [];
+              nodeId++;
+            }
+          }
+        }
+        // Add edges
+        for (const feat of features) {
+          const coords = feat.geometry.coordinates;
+          for (let i = 0; i < coords.length - 1; i++) {
+            const a = coordToId[coords[i].join(",")];
+            const b = coordToId[coords[i + 1].join(",")];
+            const weight = feat.properties.weight || 1;
+            edges[a].push({ to: b, weight, shadeRatio: feat.properties.shadeRatio });
+            edges[b].push({ to: a, weight, shadeRatio: feat.properties.shadeRatio });
+          }
+        }
+        return { nodes, edges };
+      }
+      function dijkstra(nodes, edges, startId, endId) {
+        const dist = {}, prev = {}, visited = {};
+        for (const id in nodes) {
+          dist[id] = Infinity;
+          prev[id] = null;
+        }
+        dist[startId] = 0;
+        const queue = new Set(Object.keys(nodes));
+        while (queue.size > 0) {
+          let u = null, minDist = Infinity;
+          for (const id of queue) {
+            if (dist[id] < minDist) {
+              minDist = dist[id];
+              u = id;
+            }
+          }
+          if (u === null || u === endId) break;
+          queue.delete(u);
+          visited[u] = true;
+          for (const edge of edges[u]) {
+            if (visited[edge.to]) continue;
+            const alt = dist[u] + edge.weight;
+            if (alt < dist[edge.to]) {
+              dist[edge.to] = alt;
+              prev[edge.to] = u;
+            }
+          }
+        }
+        // Reconstruct path
+        const path = [];
+        let u = endId;
+        while (u && prev[u] !== null) {
+          path.unshift(u);
+          u = prev[u];
+        }
+        if (u === startId) path.unshift(startId);
+        return path;
+      }
+      async function findAndRenderShadyPath() {
+
+        // Always fetch and update the highway graph with current shade weights
+        await fetchAndRenderHighwayGraph();
+        // Get highway features
+        const source = map.getSource("highways");
+        if (!source) {
+          alert("Highway graph not loaded yet.");
+          return;
+        }
+        const features = source._data.features;
+        // Build graph
+        const { nodes, edges } = buildGraphFromHighways(features);
+        // Get user start/end
+        const startStr = document.getElementById("route-start").value.trim();
+        const endStr = document.getElementById("route-end").value.trim();
+        const startCoord = startStr.split(",").map(Number);
+        const endCoord = endStr.split(",").map(Number);
+        // Snap to nearest node
+        const startId = findNearestNode(startCoord, nodes);
+        const endId = findNearestNode(endCoord, nodes);
+        if (!startId || !endId) {
+          alert("Could not find nearest graph nodes for start/end.");
+          return;
+        }
+        // Dijkstra
+        const pathIds = dijkstra(nodes, edges, startId, endId);
+        if (!pathIds.length) {
+          alert("No path found.");
+          return;
+        }
+        // Build path coordinates
+        const pathCoords = pathIds.map((id) => nodes[id]);
+        // Calculate total weight and average shade
+        let totalWeight = 0, totalShade = 0, segs = 0;
+        for (let i = 0; i < pathIds.length - 1; i++) {
+          const a = pathIds[i], b = pathIds[i + 1];
+          const edge = edges[a].find(e => e.to === b);
+          if (edge) {
+            totalWeight += edge.weight;
+            totalShade += edge.shadeRatio;
+            segs++;
+          }
+        }
+        const avgShade = segs > 0 ? totalShade / segs : 0;
+        // Render path
+        const pathGeoJSON = {
+          type: "FeatureCollection",
+          features: [
+            {
+              type: "Feature",
+              geometry: { type: "LineString", coordinates: pathCoords },
+              properties: {},
+            },
+          ],
+        };
+        if (map.getSource("shady-path")) {
+          map.getSource("shady-path").setData(pathGeoJSON);
+        } else {
+          map.addSource("shady-path", { type: "geojson", data: pathGeoJSON });
+          map.addLayer({
+            id: "shady-path",
+            type: "line",
+            source: "shady-path",
+            layout: { "line-join": "round", "line-cap": "round" },
+            paint: { "line-color": "#0093ff", "line-width": 6, "line-opacity": 0.9 },
+          });
+        }
+        console.log(`[Dijkstra Debug] Path found. Total weight: ${totalWeight.toFixed(2)}, Avg shade: ${(avgShade * 100).toFixed(1)}%. Path length: ${pathCoords.length}`);
+      }
+      
+      
+      document.getElementById("find-shadiest-path").onclick = findAndRenderShadyPath;
+
       // Debug: click to check if point is shaded
       map.on("click", function (e) {
         const lngLat = [e.lngLat.lng, e.lngLat.lat];
@@ -424,6 +723,19 @@
           });
         }
       });
+
+      // Set start location to user's current geolocation
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(pos) {
+          const lng = pos.coords.longitude.toFixed(6);
+          const lat = pos.coords.latitude.toFixed(6);
+          document.getElementById("route-start").value = `${lng},${lat}`;
+        }, function(err) {
+          console.warn("[Geolocation] Could not get user location:", err);
+        });
+      } else {
+        console.warn("[Geolocation] Not supported by this browser.");
+      }
     </script>
   </body>
 </html>
