@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- TEST REMOVE LATER -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chill Path Web Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        background-color: #f0f2f5;
+        margin: 0;
+        padding: 20px;
+      }
+      .container {
+        background-color: #ffffff;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        padding: 30px;
+        width: 100%;
+        max-width: 500px;
+        text-align: center;
+      }
+      h1 {
+        color: #333;
+        margin-bottom: 25px;
+      }
+      .loading,
+      .error,
+      .results {
+        margin-top: 20px;
+        padding: 15px;
+        border-radius: 8px;
+        font-size: 1.1em;
+      }
+      .loading {
+        background-color: #e0f2f7;
+        color: #007bff;
+      }
+      .error {
+        background-color: #ffe0e0;
+        color: #d9534f;
+      }
+      .results {
+        background-color: #e6ffe6;
+        color: #333;
+        border: 1px solid #66bb6a;
+      }
+      .results p {
+        margin: 5px 0;
+      }
+      .results strong {
+        color: #007bff;
+      }
+      .message {
+        font-style: italic;
+        margin-top: 10px;
+        color: #666;
+        font-size: 0.95em;
+      }
+      button {
+        background-color: #007bff;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 1em;
+        margin-top: 20px;
+        transition: background-color 0.3s ease;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Chill Path Recommendation Tester</h1>
+      <p>
+        Click the button below to fetch a recommendation from your Flask
+        backend.
+      </p>
+      <button id="fetchButton">Get Recommendation</button>
+
+      <div id="status" class="loading" style="display: none">Loading...</div>
+
+      <div id="error" class="error" style="display: none">
+        Error: <span id="errorMessage"></span>
+      </div>
+
+      <div id="results" class="results" style="display: none">
+        <p>Path ID: <strong id="pathId"></strong></p>
+        <p>Distance: <strong id="distance"></strong> meters</p>
+        <p>Time: <strong id="time"></strong> minutes</p>
+        <p>Recommended Water: <strong id="water"></strong> Liters</p>
+        <p class="message" id="message"></p>
+      </div>
+    </div>
+
+    <script>
+      const fetchButton = document.getElementById("fetchButton");
+      const statusDiv = document.getElementById("status");
+      const errorDiv = document.getElementById("error");
+      const errorMessageSpan = document.getElementById("errorMessage");
+      const resultsDiv = document.getElementById("results");
+      const pathIdSpan = document.getElementById("pathId");
+      const distanceSpan = document.getElementById("distance");
+      const timeSpan = document.getElementById("time");
+      const waterSpan = document.getElementById("water");
+      const messageP = document.getElementById("message");
+
+      const testPathId = "web-test-path-456"; // A dummy path ID for the test
+
+      fetchButton.addEventListener("click", async () => {
+        // Reset display
+        statusDiv.style.display = "block";
+        errorDiv.style.display = "none";
+        resultsDiv.style.display = "none";
+        errorMessageSpan.textContent = "";
+
+        try {
+          // Adjust this URL if your Flask backend is running on a different address/port
+          const backendUrl = `http://127.0.0.1:5001/api/get-chill-path-recommendation?pathId=${testPathId}`;
+          console.log("Fetching from backend:", backendUrl);
+
+          const response = await fetch(backendUrl);
+
+          if (!response.ok) {
+            const errorData = await response
+              .json()
+              .catch(() => ({ error: "Unknown error" }));
+            throw new Error(
+              `HTTP error! Status: ${response.status} - ${errorData.error || "Unknown error"}`,
+            );
+          }
+
+          const data = await response.json();
+          console.log("Received data:", data);
+
+          pathIdSpan.textContent = data.pathId;
+          distanceSpan.textContent = data.distance_meters;
+          timeSpan.textContent = Math.round(data.time_seconds / 60);
+          waterSpan.textContent = data.recommended_water_liters;
+          messageP.textContent = data.message;
+
+          resultsDiv.style.display = "block";
+        } catch (e) {
+          console.error("Fetch error:", e);
+          errorMessageSpan.textContent = e.message;
+          errorDiv.style.display = "block";
+        } finally {
+          statusDiv.style.display = "none"; // Hide loading spinner
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -29,5 +29,4 @@ import { getWashrooms } from "./routes/get_washrooms";
   app.listen(PORT, () => {
     console.log(`server is listening to port ${PORT}`);
   });
-  
 })();

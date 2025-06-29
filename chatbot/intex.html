@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- DELETE LATER TEST FRONTEND -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Simple Gemini Chatbot Frontend</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background-color: #f4f4f4;
+      }
+      #chat-container {
+        width: 80%;
+        max-width: 600px;
+        margin: 20px auto;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        background-color: #fff;
+        display: flex;
+        flex-direction: column;
+        height: 70vh; /* Make it taller */
+        overflow: hidden;
+      }
+      #chat-log {
+        flex-grow: 1;
+        padding: 15px;
+        overflow-y: auto;
+        border-bottom: 1px solid #eee;
+        background-color: #e9ecef;
+      }
+      .message {
+        margin-bottom: 10px;
+        padding: 8px 12px;
+        border-radius: 6px;
+        max-width: 80%;
+      }
+      .user-message {
+        background-color: #d1e7dd; /* Light green */
+        align-self: flex-end; /* Align to the right */
+        margin-left: auto;
+      }
+      .bot-message {
+        background-color: #e2e3e5; /* Light grey */
+        align-self: flex-start; /* Align to the left */
+        margin-right: auto;
+      }
+      #input-area {
+        display: flex;
+        padding: 15px;
+        border-top: 1px solid #eee;
+        background-color: #f8f9fa;
+      }
+      #user-input {
+        flex-grow: 1;
+        padding: 10px;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        margin-right: 10px;
+        font-size: 16px;
+      }
+      #send-button {
+        padding: 10px 20px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+      }
+      #send-button:hover {
+        background-color: #0056b3;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="chat-container">
+      <div id="chat-log"></div>
+      <div id="input-area">
+        <input type="text" id="user-input" placeholder="Type your message..." />
+        <button id="send-button">Send</button>
+      </div>
+    </div>
+
+    <script>
+      const chatLog = document.getElementById("chat-log");
+      const userInput = document.getElementById("user-input");
+      const sendButton = document.getElementById("send-button");
+
+      // This will store the entire conversation history that gets sent to the backend.
+      // It includes the initial greeting to set context.
+      let conversationHistory = [
+        {
+          role: "user",
+          parts: [{ text: "hello" }],
+        },
+        {
+          role: "model",
+          parts: [
+            {
+              text: `Hello there! I'm your friendly assistant specializing in heat-related health and safety.
+
+I'm here to help you stay safe, cool, and comfortable during hot weather.
+
+How can I help you today? You can ask me about things like:
+
+* Preventing heatstroke and heat exhaustion
+* What to wear in the heat
+* Hydration and how much water to drink
+* Tips for keeping your family, pets, or outdoor workers safe
+
+Just let me know what's on your mind`,
+            },
+          ],
+        },
+      ];
+
+      // Function to display messages in the chat log UI
+      function displayMessage(message, sender) {
+        const messageDiv = document.createElement("div");
+        messageDiv.classList.add("message");
+        messageDiv.classList.add(
+          sender === "user" ? "user-message" : "bot-message",
+        );
+        // Using innerHTML might be needed if the bot's response contains markdown that
+        // you want to render (e.g., lists with *). For true markdown rendering,
+        // you'd add a markdown library. For now, textContent is safer.
+        messageDiv.textContent = message;
+        chatLog.appendChild(messageDiv);
+        // Auto-scroll to the bottom of the chat
+        chatLog.scrollTop = chatLog.scrollHeight;
+      }
+
+      // Display the initial greeting from the bot when the page loads
+      document.addEventListener("DOMContentLoaded", () => {
+        // Display the model's initial greeting from the conversationHistory
+        if (
+          conversationHistory.length > 1 &&
+          conversationHistory[1].role === "model"
+        ) {
+          displayMessage(conversationHistory[1].parts[0].text, "bot");
+        }
+      });
+
+      // Function to send message to the Flask backend
+      async function sendMessage() {
+        const message = userInput.value.trim();
+        if (!message) return; // Don't send empty messages
+
+        displayMessage(message, "user"); // Show user's message immediately
+        userInput.value = ""; // Clear input field
+
+        // Add the current user message to our local conversation history
+        conversationHistory.push({
+          role: "user",
+          parts: [{ text: message }],
+        });
+
+        try {
+          // Send the request to your Flask backend's /chat endpoint
+          const response = await fetch("http://127.0.0.1:5000/chat", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            // Send the current message and the ENTIRE conversation history
+            // The backend will combine this before sending to Gemini.
+            body: JSON.stringify({
+              message: message,
+              history: conversationHistory.slice(0, -1), // Send all previous history *excluding* the very last message (the current user message) because the backend will explicitly add it.
+            }),
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(
+              `HTTP error! Status: ${response.status} - ${errorText}`,
+            );
+          }
+
+          const data = await response.json(); // Parse the JSON response
+          const botResponse = data.response; // Extract the 'response' field
+
+          displayMessage(botResponse, "bot"); // Display the bot's response
+          // Add the bot's response to our local conversation history
+          conversationHistory.push({
+            role: "model",
+            parts: [{ text: botResponse }],
+          });
+        } catch (error) {
+          console.error("Error sending message:", error);
+          displayMessage(
+            "Sorry, something went wrong. Please check the console for details or ensure the backend is running.",
+            "bot",
+          );
+          // Remove the last user message from history if an error occurred
+          // to prevent sending it again on the next try with a potentially broken state.
+          conversationHistory.pop();
+        }
+      }
+
+      // Event listeners for sending messages
+      sendButton.addEventListener("click", sendMessage); // Send on button click
+      userInput.addEventListener("keypress", (event) => {
+        // Send on Enter key press
+        if (event.key === "Enter") {
+          sendMessage();
+        }
+      });
+    </script>
+  </body>
+</html>

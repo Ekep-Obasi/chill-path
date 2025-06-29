@@ -1,0 +1,20 @@
+{
+  "name": "mapbox-gl-shadow-simulator",
+  "version": "0.60.0",
+  "description": "Display terrain and structure shadows cast by the sun in a custom style layer",
+  "main": "dist/mapbox-gl-shadow-simulator.umd.min.js",
+  "browser": "dist/mapbox-gl-shadow-simulator.umd.min.js",
+  "module": "dist/mapbox-gl-shadow-simulator.esm.js",
+  "types": "dist/mapbox-gl-shadow-simulator.d.ts",
+  "scripts": {
+    "start": "npx serve ."
+  },
+  "dependencies": {
+    "mapbox-gl-shadow-simulator": "^0.60.0",
+    "suncalc": "^1.9.0"
+  },
+  "devDependencies": {
+    "@types/mapbox-gl": "^2.7.8"
+  },
+  "packageManager": "pnpm@10.12.4+sha512.5ea8b0deed94ed68691c9bad4c955492705c5eeb8a87ef86bc62c74a26b037b08ff9570f108b2e4dbd1dd1a9186fea925e527f141c648e85af45631074680184"
+}
