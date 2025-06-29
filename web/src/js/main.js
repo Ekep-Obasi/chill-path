@@ -50,6 +50,24 @@ async function initializeUserLocation() {
     const coordinates = [position.coords.longitude, position.coords.latitude];
     window.startCoordinates = coordinates;
 
+    // Plot user location marker on the map
+    if (window.mapManager && window.mapManager.getMap) {
+        const map = window.mapManager.getMap();
+      if (map && map.loaded()) {
+        new mapboxgl.Marker({ color: "#4285F4" })
+          .setLngLat(coordinates)
+          .setPopup(new mapboxgl.Popup().setText("You are here"))
+          .addTo(map);
+      } else if (map) {
+        map.once("load", () => {
+          new mapboxgl.Marker({ color: "#4285F4" })
+            .setLngLat(coordinates)
+            .setPopup(new mapboxgl.Popup().setText("You are here"))
+            .addTo(map);
+        });
+      }
+    }
+
     // Reverse geocode to get a readable address
     try {
       const response = await fetch(
@@ -102,7 +120,7 @@ async function handleUpdateShadows() {
  */
 async function handleGetRoute() {
   if (!window.startCoordinates || !window.endCoordinates) {
-    alert("Please select both start and destination locations.");
+    window.log("Please select both start and destination locations.");
     return;
   }
 
@@ -144,14 +162,13 @@ async function handleGetRoute() {
       const shadeRating = window.shadeSystem.calculateShadeRating(coordinates);
       const message = `Route found! Shade coverage: ${window.formatNumber(shadeRating * 100)}%`;
 
-      alert(message);
       window.log(message);
     } else {
       throw new Error("No valid route coordinates found");
     }
   } catch (error) {
     console.error("Error getting route:", error);
-    alert("Failed to calculate route. Please try again.");
+    window.log("Failed to calculate route. Please try again.");
   }
 }
 
@@ -160,7 +177,7 @@ async function handleGetRoute() {
  */
 async function handleFindShadyPath() {
   if (!window.startCoordinates || !window.endCoordinates) {
-    alert("Please select both start and destination locations.");
+    window.log("Please select both start and destination locations.");
     return;
   }
 
@@ -177,11 +194,10 @@ async function handleFindShadyPath() {
       window.endCoordinates,
     );
 
-    alert(result.message);
     window.log(result.message);
   } catch (error) {
     console.error("Error finding shady path:", error);
-    alert("Failed to find shady path. Please try again.");
+    window.log("Failed to find shady path. Please try again.");
   }
 }
 
