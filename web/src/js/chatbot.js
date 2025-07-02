@@ -114,7 +114,7 @@ window.HeatSafeChatbot = class {
       console.error("Gemini API Error:", error);
       this.hideTypingIndicator();
       this.addMessage(
-        "Sorry, I'm having trouble right now. Here's a quick tip: In 38°C heat, drink water every 15-20 minutes, stay in shade, and avoid outdoor activities between 11 AM - 4 PM.",
+        "Sorry, I'm having trouble right now. Here's a quick tip: In 21°C heat, drink water every 15-20 minutes, stay in shade, and avoid outdoor activities between 11 AM - 4 PM.",
         "ai",
       );
     } finally {
@@ -124,7 +124,7 @@ window.HeatSafeChatbot = class {
   }
 
   async callGeminiAPI(message) {
-    const prompt = `You are HeatSafe AI, a heat safety assistant. Current temperature: 38°C (very hot). 
+    const prompt = `You are HeatSafe AI, a heat safety assistant. Current temperature: 21°C (very hot). 
   
   User question: ${message}
   
@@ -227,7 +227,7 @@ window.HeatSafeChatbot = class {
 
   handleQuickAction(action) {
     const actionMessages = {
-      outfit: "What should I wear in 38°C heat to stay cool?",
+      outfit: "What should I wear in 21°C heat to stay cool?",
       cooling: "Where can I find cooling centers nearby?",
       route: "How do I plan a safe route in extreme heat?",
       emergency: "I feel dizzy and nauseous from the heat. Help!",
