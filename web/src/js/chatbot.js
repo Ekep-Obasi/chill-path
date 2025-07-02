@@ -107,14 +107,16 @@ window.HeatSafeChatbot = class {
     this.updateSendButton();
 
     try {
-      const response = await this.callGeminiAPI(message);
+      // Fetch current temperature from OpenWeather API
+      const temperature = await this.fetchCurrentTemperature();
+      const response = await this.callGeminiAPI(message, temperature);
       this.hideTypingIndicator();
       this.addMessage(response, "ai");
     } catch (error) {
       console.error("Gemini API Error:", error);
       this.hideTypingIndicator();
       this.addMessage(
-        "Sorry, I'm having trouble right now. Here's a quick tip: In 21°C heat, drink water every 15-20 minutes, stay in shade, and avoid outdoor activities between 11 AM - 4 PM.",
+        "Sorry, I'm having trouble right now. Here's a quick tip: In hot weather, drink water every 15-20 minutes, stay in shade, and avoid outdoor activities between 11 AM - 4 PM.",
         "ai",
       );
     } finally {
@@ -123,12 +125,27 @@ window.HeatSafeChatbot = class {
     }
   }
 
-  async callGeminiAPI(message) {
-    const prompt = `You are HeatSafe AI, a heat safety assistant. Current temperature: 21°C (very hot). 
-  
-  User question: ${message}
-  
-  Provide a helpful, concise response (under 100 words) about heat safety, hydration, cooling, or emergency advice. If someone feels unwell, recommend seeking medical attention immediately.`;
+  async fetchCurrentTemperature() {
+    try {
+      const lat = window.startCoordinates ? window.startCoordinates[1] : window.CONFIG.LOCATION.CENTER.lat;
+      const lon = window.startCoordinates ? window.startCoordinates[0] : window.CONFIG.LOCATION.CENTER.lng;
+      const apiKey = window.CONFIG.OPENWEATHER.API_KEY;
+      const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Failed to fetch weather");
+      const data = await response.json();
+      if (data && data.main && typeof data.main.temp === "number") {
+        return Math.round(data.main.temp);
+      }
+      throw new Error("Invalid weather data");
+    } catch (e) {
+      window.log("Weather fetch error: " + e.message);
+      return 21; // fallback temperature
+    }
+  }
+
+  async callGeminiAPI(message, temperature) {
+    const prompt = `You are HeatSafe AI, a helpful assistant for outdoor safety and comfort. The current temperature is ${temperature}°C.\n\nUser question: ${message}\n\nIf the user's question is about heat, weather, hydration, or health, provide a concise, practical response (under 100 words) and mention temperature or safety tips only if relevant. For other questions, answer naturally and do not repeat generic safety advice. If someone feels unwell, recommend seeking medical attention immediately.`;
 
     const requestBody = {
       contents: [

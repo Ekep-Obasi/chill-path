@@ -193,8 +193,35 @@ async function handleFindShadyPath() {
       window.startCoordinates,
       window.endCoordinates,
     );
+    console.log('[DEBUG] findShadiestPath result:', result);
+    window.log(result && result.message ? result.message : '[DEBUG] No result.message');
 
-    window.log(result.message);
+    // --- New: Calculate water requirement ---
+    if (result && result.coordinates && Array.isArray(result.coordinates) && result.coordinates.length > 1) {
+      // Calculate distance in km using result.coordinates
+      const turfLine = turf.lineString(result.coordinates);
+      const distanceKm = turf.length(turfLine, { units: 'kilometers' });
+      // Fetch current temperature
+      let temperature = 21;
+      try {
+        temperature = await window.heatSafeChatbot.fetchCurrentTemperature();
+      } catch (e) {}
+      // Ask Gemini for water requirement
+      const waterPrompt = `A person is planning to walk ${distanceKm.toFixed(2)} kilometers from start to end. The current temperature is ${temperature}°C. How much water (in cups, 250ml per cup) should a healthy adult bring to stay hydrated for this trip? Consider both the distance and the temperature. Respond with only the number of cups (rounded up) and a short, clear sentence, e.g. 'You should bring 5 cups of water for this trip.'`;
+      console.log('[DEBUG] Water advice prompt:', waterPrompt);
+      console.log('[DEBUG] Distance (km):', distanceKm, 'Temperature (C):', temperature);
+      let waterAdvice = '';
+      try {
+        waterAdvice = await window.heatSafeChatbot.callGeminiAPI(waterPrompt, temperature);
+        console.log('[DEBUG] Gemini water advice:', waterAdvice);
+      } catch (e) {
+        waterAdvice = 'Unable to calculate water requirement.';
+        console.log('[DEBUG] Gemini error:', e);
+      }
+      window.log(waterAdvice);
+      window.showWaterAdvicePopup(waterAdvice);
+    }
+    // --- End new ---
   } catch (error) {
     console.error("Error finding shady path:", error);
     window.log("Failed to find shady path. Please try again.");
@@ -275,6 +302,34 @@ function initializeChatbot() {
 
   window.log("Heat Safety Chatbot initialized");
 }
+
+/**
+ * Utility: Show a custom popup (modal) for water advice
+ */
+window.showWaterAdvicePopup = function(message) {
+  // Remove any existing popup
+  const existing = document.getElementById('water-advice-popup');
+  if (existing) existing.remove();
+
+  const popup = document.createElement('div');
+  popup.id = 'water-advice-popup';
+  popup.style.position = 'fixed';
+  popup.style.left = '50%';
+  popup.style.top = '20%';
+  popup.style.transform = 'translate(-50%, 0)';
+  popup.style.background = 'white';
+  popup.style.border = '2px solid #34c759';
+  popup.style.borderRadius = '12px';
+  popup.style.boxShadow = '0 4px 24px rgba(0,0,0,0.18)';
+  popup.style.padding = '28px 32px 20px 32px';
+  popup.style.zIndex = 9999;
+  popup.style.fontSize = '1.2rem';
+  popup.style.textAlign = 'center';
+  popup.style.maxWidth = '90vw';
+  popup.innerHTML = `<div style='font-size:2.2rem;margin-bottom:10px;'>💧</div><div>${message}</div><button id='close-water-advice' style='margin-top:18px;padding:8px 22px;font-size:1rem;background:#34c759;color:white;border:none;border-radius:6px;cursor:pointer;'>OK</button>`;
+  document.body.appendChild(popup);
+  document.getElementById('close-water-advice').onclick = () => popup.remove();
+};
 
 /**
  * Main initialization function

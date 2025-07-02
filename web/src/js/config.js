@@ -30,7 +30,7 @@ window.CONFIG = {
 
   // Gemini AI Configuration
   GEMINI: {
-    API_KEY: "AIzaSyAiiKLokJBzL766sGuk0P9ltaM7edyzQiE", // Replace with your actual Gemini API key
+    API_KEY: "AIzaSyASfDWeZI3KngE-zX08IcDicgoDsiGYMqM", // Replace with your actual Gemini API key
     API_URL:
       "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent",
     MODEL: "gemini-pro",
@@ -88,4 +88,9 @@ window.CONFIG = {
     TYPING_DELAY: 1000, // 1 second typing indicator
     MAX_MESSAGE_LENGTH: 500,
   },
+
+  // OpenWeather API Configuration
+  OPENWEATHER: {
+    API_KEY: "237b99631396d1ed6b70e5e263f3a32a", // Replace with your actual OpenWeather API key
+  }
 };
