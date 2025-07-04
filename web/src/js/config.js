@@ -52,7 +52,7 @@ window.CONFIG = {
 
   // API Configuration
   API: {
-    BASE_URL: "https://6005-141-117-117-45.ngrok-free.app",
+    BASE_URL: "https://chill-path-mo36.onrender.com/",
     OVERPASS_URL: "https://overpass-api.de/api/interpreter",
     HEADERS: {
       "Content-Type": "application/json",
