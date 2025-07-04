@@ -1,7 +1,7 @@
+import 'tsconfig-paths/register';
 import express, { Express } from "express";
-import { PORT } from "~/constants";
-import App from "~/config/app.config";
-const axios = require('axios');
+import { PORT } from "./constants";
+import App from "./config/app.config";
 
 // Route directories
 const distance_only = require("./routes/distance_only");
