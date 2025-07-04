@@ -52,7 +52,7 @@ window.CONFIG = {
 
   // API Configuration
   API: {
-    BASE_URL: "https://chill-path-mo36.onrender.com/",
+    BASE_URL: "https://chill-path-mo36.onrender.com",
     OVERPASS_URL: "https://overpass-api.de/api/interpreter",
     HEADERS: {
       "Content-Type": "application/json",
