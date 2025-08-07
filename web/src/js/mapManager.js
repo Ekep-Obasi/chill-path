@@ -16,20 +16,24 @@ window.MapManager = class {
 
   /**
    * Initialize the map
+   * @param {Array} initialCenter - [lng, lat] to center the map on (optional)
    */
-  async initialize() {
+  async initialize(initialCenter) {
     try {
       // Set Mapbox access token
       mapboxgl.accessToken = window.CONFIG.MAPBOX.API_KEY;
+
+      // Use provided center or fallback to config
+      const center = initialCenter || [
+        window.CONFIG.LOCATION.CENTER.lng,
+        window.CONFIG.LOCATION.CENTER.lat,
+      ];
 
       // Create map instance
       this.map = new mapboxgl.Map({
         container: "map",
         style: window.CONFIG.MAPBOX.STYLE,
-        center: [
-          window.CONFIG.LOCATION.CENTER.lng,
-          window.CONFIG.LOCATION.CENTER.lat,
-        ],
+        center: center,
         zoom: window.CONFIG.MAPBOX.DEFAULT_ZOOM,
       });
 
@@ -134,6 +138,25 @@ window.MapManager = class {
         debug: (msg) => window.log(`ShadeMap: ${msg}`),
       }).addTo(this.map);
 
+      // Check if it's night time on initial render and hide shade if needed
+      setTimeout(() => {
+        const center = this.map.getCenter();
+        const lat = center.lat;
+        const lng = center.lng;
+        console.log("[DEBUG] Initial night time check on map load");
+        if (window.isNightTime && window.isNightTime(lat, lng)) {
+          console.log("[DEBUG] Initial load: Night time detected, hiding ShadeMap");
+          try {
+            this.shadeMap.setOpacity(0);
+            console.log("[DEBUG] Initial load: ShadeMap opacity set to 0");
+          } catch (e) {
+            console.log("[DEBUG] Initial load: Could not set ShadeMap opacity:", e);
+          }
+        } else {
+          console.log("[DEBUG] Initial load: Day time detected, ShadeMap visible");
+        }
+      }, 1000); // Small delay to ensure everything is loaded
+
       window.log("ShadeMap initialized successfully");
     } catch (error) {
       console.error("Failed to initialize ShadeMap:", error);
@@ -184,6 +207,22 @@ window.MapManager = class {
       }
     } catch (error) {
       console.error(`Error adding layer ${layerConfig.id}:`, error);
+    }
+  }
+
+  /**
+   * Remove a layer if it exists
+   */
+  removeLayerIfExists(layerId) {
+    try {
+      if (this.map.getLayer(layerId)) {
+        this.map.removeLayer(layerId);
+      }
+      if (this.map.getSource(layerId)) {
+        this.map.removeSource(layerId);
+      }
+    } catch (error) {
+      console.error(`Error removing layer/source ${layerId}:`, error);
     }
   }
 

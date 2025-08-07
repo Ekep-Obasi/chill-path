@@ -256,7 +256,10 @@ window.ShadeSystem = class {
       if (sunPosition.altitude <= 0) {
         window.log("Sun is below horizon, no shadows rendered");
         this.lastShadowPolygons = [];
-        this.updateMapShadows([]);
+        // Remove the shade layer if it's night
+        if (this.mapManager && this.mapManager.removeLayerIfExists) {
+          this.mapManager.removeLayerIfExists("shadows");
+        }
         return;
       }
 
@@ -276,7 +279,7 @@ window.ShadeSystem = class {
         properties: {},
       }));
 
-      this.updateMapShadows(shadowFeatures);
+      this.updateShadowsOnMap(shadowFeatures);
       window.log(`Rendered ${shadowFeatures.length} shadow polygons`);
     } catch (error) {
       console.error("Error rendering shadows:", error);
@@ -286,15 +289,22 @@ window.ShadeSystem = class {
   /**
    * Update shadow polygons on the map
    */
-  updateMapShadows(shadowFeatures) {
+  async updateShadowsOnMap(shadowFeatures) {
     try {
+      // If it's night, do not add the shade layer at all
+      const center = this.mapManager.map.getCenter();
+      const lat = center.lat;
+      const lng = center.lng;
+      const now = new Date();
+      if (window.isNightTime && window.isNightTime(lat, lng, now)) {
+        this.mapManager.removeLayerIfExists("shadows");
+        return;
+      }
       const shadowData = {
         type: "FeatureCollection",
         features: shadowFeatures,
       };
-
       this.mapManager.addOrUpdateSource("shadows", shadowData);
-
       this.mapManager.addLayerIfNotExists({
         id: "shadows",
         type: "fill",

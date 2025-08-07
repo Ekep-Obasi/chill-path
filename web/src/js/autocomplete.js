@@ -376,16 +376,13 @@ window.LocationAutocomplete = class {
   setLocation(coordinates, placeName) {
     this.selectedCoordinates = coordinates;
     this.input.value = placeName;
-    this.input.classList.add("location-selected");
+    this.hideSuggestions();
+    this.clearValidation();
 
-    // Update global coordinates
-    if (this.input.id === "route-start-search") {
-      window.startCoordinates = coordinates;
-    } else if (this.input.id === "route-end-search") {
-      window.endCoordinates = coordinates;
+    // Trigger the callback if it exists
+    if (this.onLocationSelected) {
+      this.onLocationSelected(coordinates, placeName);
     }
-
-    window.updateButtonStates();
   }
 
   /**

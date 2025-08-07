@@ -11,10 +11,12 @@ window.RoutingSystem = class {
   /**
    * Fetch highway network data
    */
-  async fetchHighwayNetwork() {
+  async fetchHighwayNetwork(centerOverride = null, radiusKm = 2) {
     try {
-      const center = window.CONFIG.LOCATION.CENTER;
-      const delta = window.CONFIG.LOCATION.BUILDING_FETCH_DELTA;
+      // Use override center if provided, else default to TMU center
+      const center = centerOverride || window.CONFIG.LOCATION.CENTER;
+      // 1 degree latitude ~ 111km, so delta for 2km radius:
+      const delta = radiusKm / 111; // ~0.018 degrees for 2km
 
       const bbox = [
         center.lat - delta, // south
@@ -136,7 +138,15 @@ window.RoutingSystem = class {
    */
   async renderHighwayNetwork() {
     try {
-      const highwayFeatures = await this.fetchHighwayNetwork();
+      // Use user's current location if available, else default to TMU
+      let centerOverride = null;
+      if (window.startCoordinates && Array.isArray(window.startCoordinates)) {
+        centerOverride = {
+          lat: window.startCoordinates[1],
+          lng: window.startCoordinates[0],
+        };
+      }
+      const highwayFeatures = await this.fetchHighwayNetwork(centerOverride, 2);
       this.mapManager.renderHighways(highwayFeatures);
 
       window.log(
@@ -154,8 +164,13 @@ window.RoutingSystem = class {
    */
   async findShadiestPath(startCoordinates, endCoordinates) {
     try {
-      // Fetch highway network data (but don't render it visually)
-      const highwayFeatures = await this.fetchHighwayNetwork();
+      // Use user's current location as center for graph
+      const centerOverride = {
+        lat: startCoordinates[1],
+        lng: startCoordinates[0],
+      };
+      // Fetch highway network data (centered on user, 2km radius)
+      const highwayFeatures = await this.fetchHighwayNetwork(centerOverride, 2);
       // Note: We're NOT calling this.mapManager.renderHighways(highwayFeatures) here
 
       // Build graph from highway features

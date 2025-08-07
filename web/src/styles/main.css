@@ -38,8 +38,11 @@ body {
 }
 
 .panel-section {
-  padding: 16px;
-  border-bottom: 1px solid #f1f3f4;
+  padding: 15px;
+  margin-bottom: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
 }
 
 .panel-section:last-child {
@@ -47,10 +50,10 @@ body {
 }
 
 .section-title {
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 16px;
+  font-weight: bold;
   margin-bottom: 12px;
-  color: #202124;
+  color: #333;
 }
 
 /* Form Control Styles */
@@ -596,7 +599,66 @@ input[type="time"]:focus {
   }
 }
 
-/* Responsive Design */
+/* Night Alert Styles */
+.night-alert {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10000;
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  color: white;
+  padding: 12px 16px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  font-size: 14px;
+  border: 1px solid #444;
+  max-width: 280px;
+  display: none;
+  opacity: 0.95;
+  pointer-events: none;
+  letter-spacing: 0.01em;
+}
+
+/* Add styles for the close road network button */
+
+#close-road-network-btn {
+  position: fixed !important;
+  top: 20px !important;
+  left: 20px !important;
+  z-index: 1000 !important;
+  padding: 10px 15px !important;
+  background: #dc3545 !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 5px !important;
+  cursor: pointer !important;
+  fontSize: 14px !important;
+  font-weight: 500 !important;
+  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3) !important;
+  transition: all 0.2s ease !important;
+  display: none !important;
+}
+
+#close-road-network-btn:hover {
+  background: #c82333 !important;
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4) !important;
+  transform: translateY(-1px) !important;
+}
+
+#close-road-network-btn:active {
+  transform: translateY(0) !important;
+}
+
+/* Responsive design for mobile */
+@media (max-width: 768px) {
+  #close-road-network-btn {
+    top: 10px !important;
+    left: 10px !important;
+    padding: 8px 12px !important;
+    font-size: 12px !important;
+  }
+}
+
 @media (max-width: 600px) {
   .control-panel {
     max-width: calc(100% - 20px);
@@ -630,6 +692,24 @@ input[type="time"]:focus {
 
   .action-buttons {
     grid-template-columns: 1fr;
+  }
+
+  .panel-section {
+    padding: 10px;
+  }
+
+  .section-title {
+    font-size: 14px;
+  }
+
+  .time-input-container {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  #sun-time {
+    width: 100%;
+    max-width: 200px;
   }
 }
 
