@@ -34,11 +34,25 @@
 
       <div class="panel-section">
         <div class="section-title">Sun Position</div>
-        <label for="sun-time">Set time of day:</label>
-        <input type="time" id="sun-time" value="12:00" />
-        <button id="update-shadows" class="btn btn-full">
-          Update Sun Position
-        </button>
+        <div class="time-control">
+          <label for="sun-time">Set time of day:</label>
+          <div class="time-input-container">
+            <input
+              type="time"
+              id="sun-time"
+              value="12:00"
+              step="300"
+              aria-label="Time of day for shadow calculation"
+              title="Change time to see how shadows move throughout the day"
+            />
+            <span class="time-indicator">☀️</span>
+          </div>
+          <div class="time-hint">
+            💡 Shadows update automatically when you change the time
+          </div>
+        </div>
+        <!-- The update-shadows button will be hidden with CSS -->
+        <button id="update-shadows" style="display: none;">Update Sun Position</button>
       </div>
 
       <div class="panel-section">

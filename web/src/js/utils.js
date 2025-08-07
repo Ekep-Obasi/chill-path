@@ -227,3 +227,24 @@ window.log = function (message, data = null) {
     console.log(`[${timestamp}] ${message}`);
   }
 };
+
+/**
+ * Returns true if the sun is below the horizon (night time) at the given lat/lng and date.
+ * Uses SunCalc for accurate sun position.
+ * @param {number} lat - Latitude
+ * @param {number} lng - Longitude
+ * @param {Date} [date] - Date/time (defaults to now)
+ * @returns {boolean}
+ */
+window.isNightTime = function(lat, lng, date = new Date()) {
+  if (typeof SunCalc === "undefined") {
+    console.log("[DEBUG] SunCalc not available, returning false (day time)");
+    // Fallback: always return false if SunCalc is missing
+    return false;
+  }
+  const pos = SunCalc.getPosition(date, lat, lng);
+  const isNight = pos.altitude < 0;
+  console.log(`[DEBUG] isNightTime check: lat=${lat}, lng=${lng}, altitude=${pos.altitude}, isNight=${isNight}`);
+  // Sun is below the horizon if altitude < 0
+  return isNight;
+};
