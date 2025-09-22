@@ -1,5 +1,9 @@
 # Chill Path
 
+<p align="center">
+  <img src="chillpathimage.png" alt="Image Demo" width="1000"/>
+</p>
+
 This project was submitted to 2025 SolutionHacks Hackathon.
 
 Chill Path is a smart routing web application designed to help users find the most shaded and comfortable walking routes during extreme heat. Inspired by the growing global concern over heat-related deaths and the recent Toronto heat wave, Chill Path empowers people (especially vulnerable groups like elders and individuals with accessibility needs) to safely enjoy outdoor activities by avoiding direct sun exposure and locating essential public amenities.
